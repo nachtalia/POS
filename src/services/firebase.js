@@ -1,16 +1,15 @@
 import { initializeApp } from 'firebase/app'
-import {getFirestore} from 'firebase/firestore'
-import {getAuth} from 'firebase/auth'
+import { getFirestore } from 'firebase/firestore'
+import { getAuth } from 'firebase/auth'
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA7TBOKtl7ASq8GNeODoAELlCTip25cM74",
-  authDomain: "fwds-pos-management.firebaseapp.com",
-  projectId: "fwds-pos-management",
-  storageBucket: "fwds-pos-management.firebasestorage.app",
-  messagingSenderId: "609810141574",
-  appId: "1:609810141574:web:e7e827a6b7e14bbe6e5c07",
-  measurementId: "G-L5CEZ2PWVW",
-  db: "https://fwds-pos-management-default-rtdb.firebaseio.com"
+  apiKey: import.meta.env.VITE_API_KEY,
+  authDomain: import.meta.env.VITE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_APP_ID,
+  measurementId: import.meta.env.VITE_MEASUREMENT_ID
 }
 
 const app = initializeApp(firebaseConfig)
