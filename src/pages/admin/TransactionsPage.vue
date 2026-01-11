@@ -1,8 +1,8 @@
 <template>
-  <q-page padding>
+  <q-page padding class="bg-app">
     <div class="row q-col-gutter-md">
       <div class="col-12">
-        <q-card>
+        <q-card class="glass-card">
           <q-card-section class="row items-center q-pb-none">
             <div class="text-h6">Transactions</div>
             <q-space />
@@ -65,24 +65,14 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useOrderStore } from '../../stores/orderStore'
+
+const orderStore = useOrderStore()
 
 const searchQuery = ref('')
 const fromDate = ref('')
 const toDate = ref('')
-
-const transactions = ref([
-  { id: 'T-1001', customerName: 'Juan Dela Cruz', date: new Date().toISOString(), status: 'Completed', total: 28.5 },
-  { id: 'T-1002', customerName: 'Maria Santos', date: new Date(Date.now() - 3600_000).toISOString(), status: 'Preparing', total: 42.25 },
-  { id: 'T-1003', customerName: 'Pedro Pascual', date: new Date(Date.now() - 2*3600_000).toISOString(), status: 'Pending', total: 18.75 },
-  { id: 'T-1004', customerName: 'Jorge Reyes', date: new Date(Date.now() - 4*3600_000).toISOString(), status: 'Completed', total: 22.8 },
-  { id: 'T-1005', customerName: 'Anna Lim', date: new Date(Date.now() - 6*3600_000).toISOString(), status: 'Cancelled', total: 15.0 },
-  { id: 'T-1006', customerName: 'Ramon Cruz', date: new Date(Date.now() - 24*3600_000).toISOString(), status: 'Completed', total: 12.0 },
-  { id: 'T-1007', customerName: 'Liza Uy', date: new Date(Date.now() - 26*3600_000).toISOString(), status: 'Completed', total: 55.75 },
-  { id: 'T-1008', customerName: 'Nina Gomez', date: new Date(Date.now() - 30*3600_000).toISOString(), status: 'Preparing', total: 31.5 },
-  { id: 'T-1009', customerName: 'Mark Lee', date: new Date(Date.now() - 48*3600_000).toISOString(), status: 'Pending', total: 9.99 },
-  { id: 'T-1010', customerName: 'Carlo Tan', date: new Date(Date.now() - 72*3600_000).toISOString(), status: 'Completed', total: 77.2 },
-])
 
 const columns = [
   { name: 'id', label: 'ID', field: 'id', align: 'left', sortable: true },
@@ -93,12 +83,12 @@ const columns = [
 ]
 
 const filteredTransactions = computed(() => {
-  let list = transactions.value
+  let list = orderStore.orders || []
   const from = fromDate.value ? new Date(fromDate.value) : null
   const to = toDate.value ? new Date(toDate.value + 'T23:59:59') : null
   if (from || to) {
     list = list.filter(t => {
-      const d = new Date(t.date)
+      const d = new Date(t.date || t.createdAt)
       if (Number.isNaN(d.getTime())) return false
       if (from && d < from) return false
       if (to && d > to) return false
@@ -119,4 +109,10 @@ const filteredTransactions = computed(() => {
 const exportTransactions = () => {
   console.log('Export transactions:', filteredTransactions.value.length)
 }
+
+onMounted(async () => {
+  if (!orderStore.orders.length) {
+    await orderStore.fetchOrders()
+  }
+})
 </script>

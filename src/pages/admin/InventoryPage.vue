@@ -1,8 +1,8 @@
 <template>
-  <q-page padding>
+  <q-page padding class="bg-app">
     <div class="row q-col-gutter-md">
       <div class="col-12">
-        <q-card>
+        <q-card class="glass-card">
           <q-card-section>
             <div class="text-h6">Inventory Management</div>
             <div class="text-subtitle2">Manage your products and stock levels</div>
@@ -40,19 +40,9 @@
                 />
               </div>
               <div class="col-12">
-                <q-btn
-                  color="primary"
-                  icon="add"
-                  label="Add Product"
-                  @click="showAddProductDialog = true"
-                />
-                <q-btn
-                  color="secondary"
-                  icon="download"
-                  label="Export"
-                  class="q-ml-sm"
-                  @click="exportInventory"
-                />
+                <q-btn color="primary" icon="category" label="Add Category" class="q-mr-sm" @click="showAddCategoryDialog = true" />
+                <q-btn color="primary" icon="add" label="Add Product" @click="showAddProductDialog = true" />
+                <q-btn color="secondary" icon="download" label="Export" class="q-ml-sm" @click="exportInventory" />
               </div>
             </div>
 
@@ -126,7 +116,7 @@
             <q-input v-model="productForm.sku" label="SKU" outlined dense class="q-mb-md" required />
             <q-input v-model.number="productForm.price" label="Price" type="number" outlined dense class="q-mb-md" required />
             <q-input v-model.number="productForm.stock" label="Stock Quantity" type="number" outlined dense class="q-mb-md" required />
-            <q-select v-model="productForm.category" :options="categories" label="Category" outlined dense class="q-mb-md" required />
+            <q-select v-model="productForm.category" :options="categoriesForForm" label="Category" outlined dense class="q-mb-md" required />
             <q-input v-model="productForm.description" label="Description" type="textarea" outlined dense class="q-mb-md" />
           </q-form>
         </q-card-section>
@@ -144,22 +134,42 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+    <q-dialog v-model="showAddCategoryDialog" persistent>
+      <q-card style="min-width: 360px">
+        <q-card-section>
+          <div class="text-h6">Add Category</div>
+        </q-card-section>
+        <q-card-section>
+          <q-form @submit.prevent="handleSaveCategory" id="categoryForm">
+            <q-input v-model="categoryForm.name" label="Name" outlined dense class="q-mb-md" required />
+            <q-input v-model="categoryForm.description" label="Description" type="textarea" outlined dense class="q-mb-md" />
+          </q-form>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" color="primary" @click="closeCategoryDialog" />
+          <q-btn flat label="Save" color="primary" type="submit" form="categoryForm" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script setup>
 import { ref, computed, reactive, onMounted } from 'vue'
 import { useProductStore } from '../../stores/productStore'
+import { useCategoryStore } from '../../stores/categoryStore'
 import { useQuasar } from 'quasar'
 
 const $q = useQuasar()
 const productStore = useProductStore()
+const categoryStore = useCategoryStore()
 
 const searchQuery = ref('')
 const selectedCategory = ref('All')
 const selectedStock = ref('All')
 const showAddProductDialog = ref(false)
 const editingProduct = ref(null)
+const showAddCategoryDialog = ref(false)
 
 const productForm = reactive({
   name: '',
@@ -170,7 +180,7 @@ const productForm = reactive({
   description: '',
 })
 
-const categories = ['Electronics', 'Clothing', 'Books', 'Home & Garden', 'Sports']
+const categoryForm = reactive({ name: '', description: '' })
 
 const columns = [
   { name: 'name', label: 'Product Name', field: 'name', align: 'left', sortable: true },
@@ -190,12 +200,11 @@ const columns = [
 
 onMounted(() => {
   productStore.fetchProducts()
+  categoryStore.fetchCategories()
 })
 
-const categoryOptions = computed(() => {
-  const found = Array.from(new Set((productStore.products || []).map(p => p.category).filter(Boolean))).sort()
-  return ['All', ...found]
-})
+const categoryOptions = computed(() => ['All', ...((categoryStore.categories || []).map(c => c.name))])
+const categoriesForForm = computed(() => (categoryStore.categories || []).map(c => c.name))
 
 const stockOptions = ['All', 'Out of Stock', 'Low', 'Medium', 'High']
 
@@ -277,5 +286,16 @@ const closeProductDialog = () => {
 
 const exportInventory = () => {
   console.log('Exporting data:', productStore.products)
+}
+
+const handleSaveCategory = async () => {
+  if (!categoryForm.name) return
+  await categoryStore.addCategory({ ...categoryForm })
+  $q.notify({ color: 'positive', message: 'Category created', icon: 'check' })
+  closeCategoryDialog()
+}
+const closeCategoryDialog = () => {
+  showAddCategoryDialog.value = false
+  Object.assign(categoryForm, { name: '', description: '' })
 }
 </script>
