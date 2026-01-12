@@ -55,7 +55,7 @@
                   icon="download"
                   label="Export"
                   class="q-ml-sm"
-                  @click="exportInventory"
+                  @click="showExportDialog = true"
                 />
               </div>
             </div>
@@ -228,6 +228,51 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <q-dialog v-model="showExportDialog">
+      <q-card style="min-width: 360px">
+        <q-card-section>
+          <div class="text-h6">Export Inventory</div>
+          <div class="text-caption">Choose export format</div>
+        </q-card-section>
+        <q-card-section>
+          <q-option-group
+            v-model="exportFormat"
+            :options="formatOptions"
+            color="primary"
+            inline
+          />
+          <q-separator spaced />
+          <q-toggle v-model="exportUseTableFilters" label="Use current table filters" />
+          <div v-if="!exportUseTableFilters" class="q-mt-md row q-col-gutter-sm">
+            <div class="col-12 col-md-6">
+              <q-select
+                v-model="exportCategory"
+                :options="categoryOptions"
+                label="Category"
+                outlined
+                dense
+                emit-value
+              />
+            </div>
+            <div class="col-12 col-md-6">
+              <q-select
+                v-model="exportStock"
+                :options="stockOptions"
+                label="Stock"
+                outlined
+                dense
+                emit-value
+              />
+            </div>
+          </div>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" color="primary" v-close-popup />
+          <q-btn flat label="Export" color="primary" @click="executeExport" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -295,6 +340,15 @@ const categoryOptions = computed(() => [
 ])
 const categoriesForForm = computed(() => (categoryStore.categories || []).map((c) => c.name))
 const stockOptions = ['All', 'Out of Stock', 'Low', 'Medium', 'High']
+const showExportDialog = ref(false)
+const exportFormat = ref('csv')
+const formatOptions = [
+  { label: 'CSV', value: 'csv' },
+  { label: 'PDF', value: 'pdf' }
+]
+const exportUseTableFilters = ref(true)
+const exportCategory = ref('All')
+const exportStock = ref('All')
 
 const filteredProducts = computed(() => {
   let items = productStore.products || []
@@ -395,8 +449,123 @@ const closeProductDialog = () => {
   })
 }
 
-const exportInventory = () => {
-  console.log('Exporting data:', productStore.products)
+const getRowsForExport = () => {
+  if (exportUseTableFilters.value) {
+    return filteredProducts.value || []
+  }
+  let items = productStore.products || []
+  if (exportCategory.value !== 'All') {
+    items = items.filter(p => p.productCategory === exportCategory.value)
+  }
+  if (exportStock.value !== 'All') {
+    items = items.filter(p => {
+      const s = Number(p.productStock) || 0
+      if (exportStock.value === 'Out of Stock') return s === 0
+      if (exportStock.value === 'Low') return s > 0 && s < 10
+      if (exportStock.value === 'Medium') return s >= 10 && s < 50
+      if (exportStock.value === 'High') return s >= 50
+      return true
+    })
+  }
+  return items
+}
+
+const exportInventoryCSV = () => {
+  const rows = getRowsForExport()
+  if (!rows.length) {
+    $q.notify({ color: 'warning', message: 'No products to export', icon: 'warning' })
+    return
+  }
+  const header = ['Product Name', 'Category', 'Price', 'Cost', 'Stock']
+  const dataLines = rows.map(p => [
+    p.productName ?? '',
+    p.productCategory ?? '',
+    Number(p.productPrice ?? 0).toFixed(2),
+    Number(p.productCost ?? 0).toFixed(2),
+    String(p.productStock ?? 0)
+  ])
+  const escape = v => {
+    const s = String(v).replace(/"/g, '""')
+    if (/[",\n]/.test(s)) return `"${s}"`
+    return s
+  }
+  const csv = [header, ...dataLines].map(line => line.map(escape).join(',')).join('\n')
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `inventory-${new Date().toISOString().slice(0,10)}.csv`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+  $q.notify({ color: 'positive', message: `Exported ${rows.length} products`, icon: 'download' })
+}
+
+const exportInventoryPDF = () => {
+  const rows = getRowsForExport()
+  if (!rows.length) {
+    $q.notify({ color: 'warning', message: 'No products to export', icon: 'warning' })
+    return
+  }
+  const title = `Inventory Report - ${new Date().toLocaleDateString()}`
+  const html = `
+    <html>
+      <head>
+        <title>${title}</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; padding: 24px; }
+          h1 { font-size: 20px; margin: 0 0 16px; }
+          table { width: 100%; border-collapse: collapse; }
+          th, td { border: 1px solid #ddd; padding: 8px; font-size: 12px; }
+          th { background: #f3f4f6; text-align: left; }
+        </style>
+      </head>
+      <body>
+        <h1>${title}</h1>
+        <table>
+          <thead>
+            <tr>
+              <th>Product Name</th>
+              <th>Category</th>
+              <th>Price</th>
+              <th>Cost</th>
+              <th>Stock</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(p => `
+              <tr>
+                <td>${(p.productName ?? '').toString().replace(/</g,'&lt;')}</td>
+                <td>${(p.productCategory ?? '').toString().replace(/</g,'&lt;')}</td>
+                <td>${Number(p.productPrice ?? 0).toFixed(2)}</td>
+                <td>${Number(p.productCost ?? 0).toFixed(2)}</td>
+                <td>${String(p.productStock ?? 0)}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </body>
+    </html>`
+  const printWin = window.open('', '_blank')
+  if (!printWin) {
+    $q.notify({ color: 'negative', message: 'Popup blocked. Allow popups to export PDF.', icon: 'report_problem' })
+    return
+  }
+  printWin.document.write(html)
+  printWin.document.close()
+  printWin.focus()
+  printWin.print()
+  printWin.close()
+  $q.notify({ color: 'positive', message: `Prepared PDF for ${rows.length} products`, icon: 'download' })
+}
+
+const executeExport = () => {
+  showExportDialog.value = false
+  if (exportFormat.value === 'pdf') {
+    exportInventoryPDF()
+  } else {
+    exportInventoryCSV()
+  }
 }
 // Inside InventoryPage.vue <script setup>
 
