@@ -28,16 +28,6 @@
             </q-item>
           </q-list>
         </q-btn-dropdown>
-
-        <q-btn
-          color="grey-9"
-          flat
-          icon="logout"
-          label="Logout"
-          no-caps
-          @click="$emit('logout')"
-          dense
-        />
       </div>
     </q-card-section>
   </q-card>

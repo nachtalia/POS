@@ -1,4 +1,3 @@
-// src/composables/useFormatters.js
 export function useFormatters() {
   const formatCurrency = (amount, compact = false) => {
     if (isNaN(amount)) return '₱0.00'
