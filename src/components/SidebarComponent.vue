@@ -2,18 +2,14 @@
   <q-drawer v-model="model" show-if-above :width="280" class="bg-grey-1">
     <div class="column full-height no-wrap">
       <div class="q-pa-md q-pt-lg">
-        <div class="row items-center q-mb-lg q-px-sm">
-          <q-avatar
-            color="primary"
-            text-color="white"
-            icon="dashboard"
-            size="32px"
-            font-size="20px"
-            class="q-mr-sm"
+        <div class="row justify-center q-mb-lg">
+          <img
+            :src="displayedLogo"
+            alt="System Logo"
+            class="shadow-3"
+            style="height: 100px; width: 100px; object-fit: cover; border-radius: 50%"
           />
-          <div class="text-h6 text-weight-bold text-grey-9">POS System</div>
         </div>
-
         <q-card flat bordered class="bg-white rounded-borders">
           <q-item class="q-py-sm">
             <q-item-section avatar>
@@ -115,13 +111,13 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
+import { storeToRefs } from 'pinia'
 import _ from 'lodash'
 
-// 1. Import Sidebar Item Component & Stores
 import { SidebarItems } from 'src/shared'
 import { useAuthStore } from 'src/features/index.js'
+import { useSystemSettingsStore } from 'src/stores/systemSettingsStore'
 
-// 2. Firebase Imports
 import { signOut, onAuthStateChanged } from 'firebase/auth'
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore'
 import { auth, db } from 'src/services/firebase'
@@ -130,33 +126,43 @@ const model = defineModel()
 const router = useRouter()
 const $q = useQuasar()
 const authStore = useAuthStore()
+const systemSettingsStore = useSystemSettingsStore()
 
-// --- LOCAL STATE ---
+const { settings } = storeToRefs(systemSettingsStore)
+
 const currentUserName = ref('Loading...')
 const currentUserEmail = ref('...')
 const currentUserRole = ref('')
-const fetchedPermissions = ref([]) // Local cache of permissions
+const fetchedPermissions = ref([])
 
-// --- COMPUTED: USER INITIALS ---
 const userInitials = computed(() => {
   if (currentUserName.value === 'Loading...' || !currentUserName.value) return 'U'
   return currentUserName.value.charAt(0).toUpperCase()
 })
 
-// --- COMPUTED: IS SUPER ADMIN? ---
 const isSuperAdmin = computed(() => {
   const role = currentUserRole.value.toLowerCase()
   return role === 'admin' || role === 'superadmin'
 })
 
-// --- 1. INITIALIZATION & DATA FETCHING ---
+const displayedLogo = computed(() => {
+  return (
+    settings.value?.systemLogo ||
+    settings.value?.defaultLogo ||
+    'https://cdn.quasar.dev/logo-v2/svg/logo.svg'
+  )
+})
+
 onMounted(() => {
+  if (!settings.value) {
+    systemSettingsStore.fetchSettings()
+  }
+
   onAuthStateChanged(auth, async (authUser) => {
     if (authUser) {
       currentUserEmail.value = authUser.email
 
       try {
-        // A. Get User Profile from 'user' collection using email
         const q = query(collection(db, 'user'), where('email', '==', authUser.email))
         const querySnapshot = await getDocs(q)
 
@@ -165,7 +171,6 @@ onMounted(() => {
           currentUserName.value = userData.username || 'User'
           currentUserRole.value = userData.role || 'staff'
 
-          // Update Pinia Store
           if (authStore.setUser) {
             authStore.setUser({
               uid: authUser.uid,
@@ -174,7 +179,6 @@ onMounted(() => {
             })
           }
 
-          // B. Fetch Permissions (if NOT superadmin)
           if (!isSuperAdmin.value) {
             await fetchRolePermissions(currentUserRole.value)
           }
@@ -185,7 +189,6 @@ onMounted(() => {
         console.error('Error fetching user profile:', error)
       }
     } else {
-      // Handle Logout State / No User
       currentUserName.value = 'Guest'
       currentUserRole.value = ''
       fetchedPermissions.value = []
@@ -194,7 +197,6 @@ onMounted(() => {
   })
 })
 
-// Helper: Fetch permissions from 'roles' collection
 const fetchRolePermissions = async (roleName) => {
   try {
     const roleRef = doc(db, 'roles', roleName)
@@ -203,7 +205,6 @@ const fetchRolePermissions = async (roleName) => {
     if (roleSnap.exists()) {
       fetchedPermissions.value = roleSnap.data().permissions || []
 
-      // Update store so we can use can() in other components
       if (authStore.setPermissions) {
         authStore.setPermissions(fetchedPermissions.value)
       }
@@ -216,20 +217,14 @@ const fetchRolePermissions = async (roleName) => {
   }
 }
 
-// --- 2. PERMISSION LOGIC ---
 const canAccess = (route) => {
-  // A. Super Admin Bypass
   if (isSuperAdmin.value) return true
-
-  // B. No restrictions
   if (!route.meta?.permissions && !route.meta?.roles) return true
 
-  // C. Legacy Role Check
   if (route.meta?.roles) {
     if (route.meta.roles.includes(currentUserRole.value)) return true
   }
 
-  // D. Dynamic Permissions Check
   if (route.meta?.permissions) {
     const hasPermission = route.meta.permissions.some((requiredPerm) =>
       fetchedPermissions.value.includes(requiredPerm),
@@ -240,7 +235,6 @@ const canAccess = (route) => {
   return false
 }
 
-// --- 3. DYNAMIC MENU FILTERING ---
 const allRoutes = router.getRoutes()
 
 const quickAccessRoutes = computed(() => {
@@ -257,18 +251,11 @@ const managementRoutes = computed(() => {
   )
 })
 
-// --- 4. LOGOUT LOGIC (UPDATED) ---
 const onLogout = async () => {
   $q.loading.show({ message: 'Signing out...' })
   try {
-    // 1. Firebase Sign Out
     await signOut(auth)
-
-    // 2. Clear Pinia Store (Critical for Security)
-    // This removes the user & permissions from state immediately
     authStore.$reset()
-
-    // 3. Redirect
     router.replace('/')
   } catch (error) {
     console.error('Logout Error:', error)
