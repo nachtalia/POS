@@ -2,23 +2,23 @@
   <q-page class="window-height window-width bg-grey-2">
     <div class="column items-center justify-center full-height">
       <q-card shadow-10 bordered class="glass-card q-pa-xl" style="max-width: 420px; width: 100%">
-        
         <div class="column items-center justify-center q-mb-md">
-          <q-avatar size="100px" class="bg-white shadow-2 q-mb-sm">
-            <q-img 
-              :src="displayLogo" 
+          <q-avatar size="100px" class="bg-white shadow-2 q-mb-md">
+            <q-img
+              :src="displayLogo"
               spinner-color="primary"
               alt="System Logo"
               fit="contain"
               style="height: 100%; width: 100%"
             />
           </q-avatar>
-          <div class="text-h5 text-weight-bold text-primary q-mt-xs text-center">
+
+          <div class="text-subtitle1 text-grey-8 text-center q-mb-xs">Welcome to</div>
+          <div class="text-h5 text-weight-bold text-primary text-center q-mb-xs">
             {{ systemName }}
           </div>
+          <div class="text-caption text-grey-7 text-center q-mb-lg">Please sign in to continue</div>
         </div>
-
-        <div class="text-caption text-center q-mb-lg text-grey-7">Sign in to continue</div>
 
         <q-form @submit="onLoginSubmit" class="q-gutter-y-md">
           <q-input
@@ -26,7 +26,10 @@
             label="Email or Username"
             dense
             class="input-underline"
-            :class="{ 'validation-error': isIdentifierError, 'validation-success': isIdentifierSuccess }"
+            :class="{
+              'validation-error': isIdentifierError,
+              'validation-success': isIdentifierSuccess,
+            }"
             color="primary"
             :disable="loading"
           >
@@ -59,7 +62,7 @@
             </template>
           </q-input>
 
-          <div class="column items-center q-mt-lg">
+          <div class="column items-center q-mt-xl">
             <q-btn
               label="Login"
               type="submit"
@@ -81,7 +84,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useAuthStore } from 'src/features/index.js'
-import { useSystemSettingsStore } from 'src/stores/systemSettingsStore' // Import the store
+import { useSystemSettingsStore } from 'src/stores/systemSettingsStore'
 import { signInWithEmailAndPassword } from 'firebase/auth'
 import { auth, db } from 'src/services/firebase'
 import { collection, getDocs, query, where, limit } from 'firebase/firestore'
@@ -89,7 +92,7 @@ import { collection, getDocs, query, where, limit } from 'firebase/firestore'
 const router = useRouter()
 const $q = useQuasar()
 const authStore = useAuthStore()
-const systemStore = useSystemSettingsStore() // Initialize store
+const systemStore = useSystemSettingsStore()
 
 const identifier = ref('')
 const password = ref('')
@@ -99,19 +102,18 @@ const loading = ref(false)
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const usernamePattern = /^[a-zA-Z0-9_.]{3,30}$/
 
-// --- Computed Properties for System Info ---
 const displayLogo = computed(() => {
-  // Use uploaded logo, or default path, or a hard fallback
-  return systemStore.settings?.systemLogo || 
-         systemStore.settings?.defaultLogo || 
-         'https://cdn.quasar.dev/logo-v2/svg/logo.svg'
+  return (
+    systemStore.settings?.systemLogo ||
+    systemStore.settings?.defaultLogo ||
+    'https://cdn.quasar.dev/logo-v2/svg/logo.svg'
+  )
 })
 
 const systemName = computed(() => {
   return systemStore.settings?.systemName || 'POS System'
 })
 
-// Fetch settings when the login page mounts
 onMounted(async () => {
   await systemStore.fetchSettings()
 })
@@ -142,7 +144,7 @@ const onLoginSubmit = async () => {
     const adminEmail = authStore.user.email
     const adminUsername = authStore.user.username
     const adminPassword = authStore.user.password
-    
+
     const isAdminIdentifier =
       identifier.value.toLowerCase() === adminEmail.toLowerCase() ||
       identifier.value.toLowerCase() === adminUsername.toLowerCase()
@@ -173,7 +175,11 @@ const onLoginSubmit = async () => {
       const data = doc.data()
       resolvedEmail = data.email
       if (!resolvedEmail || !emailPattern.test(resolvedEmail)) {
-        $q.notify({ color: 'negative', message: 'User account has no valid email', icon: 'report_problem' })
+        $q.notify({
+          color: 'negative',
+          message: 'User account has no valid email',
+          icon: 'report_problem',
+        })
         loading.value = false
         return
       }
