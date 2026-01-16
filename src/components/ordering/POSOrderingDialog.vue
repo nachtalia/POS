@@ -242,11 +242,11 @@
                 </div>
               </div>
 
-              <div v-if="activeProduct.addons && activeProduct.addons.length > 0" class="q-mb-md">
+              <div v-if="filteredActiveAddons.length > 0" class="q-mb-md">
                 <div class="text-subtitle2 q-mb-xs">Add-ons</div>
                 <q-list bordered separator class="rounded-borders">
                   <q-item
-                    v-for="addon in activeProduct.addons"
+                    v-for="addon in filteredActiveAddons"
                     :key="addon.id || addon.label"
                     tag="label"
                     v-ripple
@@ -475,8 +475,7 @@ const promptAddToCart = (product) => {
   customizationForm.quantity = 1
   customizationForm.note = ''
 
-  // Attach globally fetched add-ons to active product
-  activeProduct.value.addons = Array.isArray(addonStore.addons) ? addonStore.addons : []
+  customizationForm.addons = []
 
   customizationDialog.value = true
 }
@@ -615,6 +614,17 @@ const submitOrder = async (summaryData) => {
     })
   }
 }
+
+const filteredActiveAddons = computed(() => {
+  const pid = activeProduct.value?.id
+  if (!pid) return []
+  const all = Array.isArray(addonStore.addons) ? addonStore.addons : []
+  return all.filter((a) => {
+    if (a.status !== 'Available') return false
+    const ids = Array.isArray(a.allowedProductIds) ? a.allowedProductIds : []
+    return ids.includes(pid)
+  })
+})
 
 // --- Lifecycle Hooks ---
 
