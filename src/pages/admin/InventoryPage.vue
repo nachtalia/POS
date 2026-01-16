@@ -186,6 +186,7 @@
                         icon="edit"
                         color="primary"
                         @click="openEditDialog(p)"
+                        v-if="canEditProduct"
                       />
                       <q-btn
                         flat
@@ -194,6 +195,7 @@
                         icon="delete"
                         color="negative"
                         @click="confirmDelete(p)"
+                        v-if="canDeleteProduct"
                       />
                     </q-card-actions>
                   </q-card>
