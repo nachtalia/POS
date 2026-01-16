@@ -10,14 +10,16 @@
       <q-header class="bg-white text-dark shadow-1 q-py-xs" height-hint="70">
         <q-toolbar class="q-px-md">
           <q-btn flat round dense icon="arrow_back" color="grey-8" v-close-popup />
-          
+
           <q-toolbar-title class="row items-center text-weight-bold">
             <div class="q-pa-sm bg-primary text-white rounded-borders q-mr-md shadow-2">
               <q-icon name="point_of_sale" size="24px" />
             </div>
             <div class="column justify-center">
               <div class="text-subtitle1 text-weight-bolder leading-tight">POS Terminal</div>
-              <div class="text-caption text-grey-6" style="font-size: 11px">Premium Edition v2.0</div>
+              <div class="text-caption text-grey-6" style="font-size: 11px">
+                Premium Edition v2.0
+              </div>
             </div>
           </q-toolbar-title>
 
@@ -29,9 +31,17 @@
                 <span class="text-weight-bold text-caption">{{ currentDate }}</span>
               </div>
             </div>
-            
-            <div class="row items-center bg-grey-2 rounded-capsule q-px-md q-py-xs cursor-pointer v-ripple">
-              <q-avatar size="28px" color="primary" text-color="white" class="q-mr-sm font-weight-bold">A</q-avatar>
+
+            <div
+              class="row items-center bg-grey-2 rounded-capsule q-px-md q-py-xs cursor-pointer v-ripple"
+            >
+              <q-avatar
+                size="28px"
+                color="primary"
+                text-color="white"
+                class="q-mr-sm font-weight-bold"
+                >A</q-avatar
+              >
               <div class="column">
                 <span class="text-caption text-grey-6" style="font-size: 10px">Operator</span>
                 <span class="text-weight-bold text-caption">Admin</span>
@@ -43,9 +53,7 @@
 
       <q-page-container>
         <q-page class="row no-wrap fit q-pa-md q-col-gutter-md">
-          
           <div class="col-12 col-md-8 column no-wrap">
-            
             <div class="row q-col-gutter-sm q-mb-md items-center">
               <div class="col-grow">
                 <q-input
@@ -60,7 +68,12 @@
                     <q-icon name="search" color="grey-5" />
                   </template>
                   <template v-slot:append v-if="search">
-                    <q-icon name="cancel" class="cursor-pointer" color="grey-5" @click="search = ''" />
+                    <q-icon
+                      name="cancel"
+                      class="cursor-pointer"
+                      color="grey-5"
+                      @click="search = ''"
+                    />
                   </template>
                 </q-input>
               </div>
@@ -86,7 +99,7 @@
             </div>
 
             <q-scroll-area class="col relative-position rounded-borders bg-transparent">
-               <q-inner-loading :showing="loadingProducts" class="bg-grey-1">
+              <q-inner-loading :showing="loadingProducts" class="bg-grey-1">
                 <q-spinner-dots size="50px" color="primary" />
               </q-inner-loading>
 
@@ -101,25 +114,31 @@
                   </div>
                 </div>
               </div>
-              
-              <div v-if="!loadingProducts && filteredProducts.length === 0" class="absolute-full flex flex-center column">
-                 <q-icon name="production_quantity_limits" size="60px" color="grey-4" />
-                 <div class="text-grey-5 text-h6 q-mt-md">No products found</div>
+
+              <div
+                v-if="!loadingProducts && filteredProducts.length === 0"
+                class="absolute-full flex flex-center column"
+              >
+                <q-icon name="production_quantity_limits" size="60px" color="grey-4" />
+                <div class="text-grey-5 text-h6 q-mt-md">No products found</div>
               </div>
             </q-scroll-area>
           </div>
 
           <div class="col-12 col-md-4 column no-wrap">
             <div class="bg-white rounded-borders shadow-2 column fit overflow-hidden">
-              
               <div class="q-pa-md bg-grey-1 border-bottom">
-                 <customer-details v-model="customer" />
+                <customer-details v-model="customer" />
               </div>
 
               <q-scroll-area class="col bg-white">
                 <q-list separator class="q-pa-sm">
                   <transition-group name="list">
-                    <q-item v-for="(item, index) in cart" :key="index" class="q-py-md cart-item rounded-borders">
+                    <q-item
+                      v-for="(item, index) in cart"
+                      :key="index"
+                      class="q-py-md cart-item rounded-borders"
+                    >
                       <q-item-section avatar>
                         <q-img
                           :src="item.product.image"
@@ -137,30 +156,63 @@
 
                       <q-item-section>
                         <div class="row justify-between items-start">
-                          <div class="text-subtitle2 text-weight-bold ellipsis-2-lines">{{ item.product.productName }}</div>
+                          <div class="text-subtitle2 text-weight-bold ellipsis-2-lines">
+                            {{ item.product.productName }}
+                          </div>
                           <div class="text-subtitle2 text-primary">
                             ${{ (item.unitPrice * item.quantity).toFixed(2) }}
                           </div>
                         </div>
 
                         <div class="text-caption text-grey-7 q-mt-xs line-height-tight">
-                           <q-badge v-if="item.selectedSize" color="blue-1" text-color="primary" label="SIZE" class="q-mr-xs" rounded dense />
-                           <span v-if="item.selectedSize" class="text-weight-medium q-mr-sm">{{ item.selectedSize.label }}</span>
-                           
-                           <div v-if="item.selectedAddons?.length" class="text-grey-6 text-xs q-mt-xs">
-                             + {{ item.selectedAddons.map((a) => a.name || a.label).join(', ') }}
-                           </div>
-                           <div v-if="item.note" class="text-italic text-grey-5 q-mt-xs">
-                             "{{ item.note }}"
-                           </div>
+                          <q-badge
+                            v-if="item.selectedSize"
+                            color="blue-1"
+                            text-color="primary"
+                            label="SIZE"
+                            class="q-mr-xs"
+                            rounded
+                            dense
+                          />
+                          <span v-if="item.selectedSize" class="text-weight-medium q-mr-sm">{{
+                            item.selectedSize.label
+                          }}</span>
+
+                          <div
+                            v-if="item.selectedAddons?.length"
+                            class="text-grey-6 text-xs q-mt-xs"
+                          >
+                            + {{ item.selectedAddons.map((a) => a.name || a.label).join(', ') }}
+                          </div>
+                          <div v-if="item.note" class="text-italic text-grey-5 q-mt-xs">
+                            "{{ item.note }}"
+                          </div>
                         </div>
                       </q-item-section>
 
                       <q-item-section side>
                         <div class="column items-center bg-grey-2 rounded-borders q-pa-xs">
-                           <q-btn flat dense round size="xs" icon="add" color="grey-8" @click="updateQuantity(index, 1)" />
-                           <div class="text-caption text-weight-bold q-py-xs">{{ item.quantity }}</div>
-                           <q-btn flat dense round size="xs" icon="remove" color="grey-8" @click="updateQuantity(index, -1)" />
+                          <q-btn
+                            flat
+                            dense
+                            round
+                            size="xs"
+                            icon="add"
+                            color="grey-8"
+                            @click="updateQuantity(index, 1)"
+                          />
+                          <div class="text-caption text-weight-bold q-py-xs">
+                            {{ item.quantity }}
+                          </div>
+                          <q-btn
+                            flat
+                            dense
+                            round
+                            size="xs"
+                            icon="remove"
+                            color="grey-8"
+                            @click="updateQuantity(index, -1)"
+                          />
                         </div>
                       </q-item-section>
                     </q-item>
@@ -194,19 +246,26 @@
       </q-page-container>
 
       <q-dialog v-model="customizationDialog" position="bottom">
-        <q-card style="width: 600px; max-width: 100vw; border-radius: 20px 20px 0 0" class="shadow-up-5">
+        <q-card
+          style="width: 600px; max-width: 100vw; border-radius: 20px 20px 0 0"
+          class="shadow-up-5"
+        >
           <div v-if="activeProduct">
             <q-card-section class="row items-start q-pb-none">
-              <q-img 
-                :src="activeProduct.image" 
-                class="rounded-borders shadow-1 col-3" 
+              <q-img
+                :src="activeProduct.image"
+                class="rounded-borders shadow-1 col-3"
                 style="height: 80px; width: 80px"
-                fit="cover" 
+                fit="cover"
               />
               <div class="col q-pl-md">
-                 <div class="text-h6 text-weight-bold">{{ activeProduct.productName }}</div>
-                 <div class="text-caption text-grey-7 ellipsis-2-lines">{{ activeProduct.description }}</div>
-                 <div class="text-h5 text-primary text-weight-bolder q-mt-xs">${{ customizedPrice.toFixed(2) }}</div>
+                <div class="text-h6 text-weight-bold">{{ activeProduct.productName }}</div>
+                <div class="text-caption text-grey-7 ellipsis-2-lines">
+                  {{ activeProduct.description }}
+                </div>
+                <div class="text-h5 text-primary text-weight-bolder q-mt-xs">
+                  ${{ customizedPrice.toFixed(2) }}
+                </div>
               </div>
               <q-btn icon="close" flat round color="grey-7" v-close-popup />
             </q-card-section>
@@ -214,7 +273,6 @@
             <q-separator class="q-my-md" />
 
             <q-card-section style="max-height: 50vh" class="scroll q-pt-none">
-              
               <div v-if="activeProduct.sizes && activeProduct.sizes.length > 0" class="q-mb-lg">
                 <div class="text-subtitle2 text-grey-8 q-mb-sm font-weight-bold">Select Size</div>
                 <div class="row q-gutter-sm">
@@ -222,16 +280,22 @@
                     v-for="size in activeProduct.sizes"
                     :key="size.label"
                     :label="size.label"
-                    :class="customizationForm.size?.label === size.label ? 'bg-primary text-white' : 'bg-grey-2 text-grey-8'"
+                    :class="
+                      customizationForm.size?.label === size.label
+                        ? 'bg-primary text-white'
+                        : 'bg-grey-2 text-grey-8'
+                    "
                     class="col-grow rounded-borders q-py-sm"
                     flat
                     no-caps
                     @click="customizationForm.size = size"
                   >
-                     <div class="column items-center">
-                       <span>{{ size.label }}</span>
-                       <span class="text-xs opacity-80" v-if="size.price > 0">+${{size.price}}</span>
-                     </div>
+                    <div class="column items-center">
+                      <span>{{ size.label }}</span>
+                      <span class="text-xs opacity-80" v-if="size.price > 0"
+                        >+${{ size.price }}</span
+                      >
+                    </div>
                   </q-btn>
                 </div>
               </div>
@@ -239,26 +303,34 @@
               <div v-if="filteredActiveAddons.length > 0" class="q-mb-lg">
                 <div class="text-subtitle2 text-grey-8 q-mb-sm font-weight-bold">Customize</div>
                 <div class="row q-col-gutter-sm">
-                   <div v-for="addon in filteredActiveAddons" :key="addon.id" class="col-6">
-                      <q-item 
-                        tag="label" 
-                        class="bg-grey-1 rounded-borders border-transparent transition-generic"
-                        :class="{'bg-blue-1 border-primary': customizationForm.addons.includes(addon)}"
-                      >
-                        <q-item-section side top>
-                          <q-checkbox v-model="customizationForm.addons" :val="addon" dense />
-                        </q-item-section>
-                        <q-item-section>
-                          <q-item-label class="text-weight-medium">{{ addon.name || addon.label }}</q-item-label>
-                          <q-item-label caption class="text-primary">+${{ Number(addon.price || 0).toFixed(2) }}</q-item-label>
-                        </q-item-section>
-                      </q-item>
-                   </div>
+                  <div v-for="addon in filteredActiveAddons" :key="addon.id" class="col-6">
+                    <q-item
+                      tag="label"
+                      class="bg-grey-1 rounded-borders border-transparent transition-generic"
+                      :class="{
+                        'bg-blue-1 border-primary': customizationForm.addons.includes(addon),
+                      }"
+                    >
+                      <q-item-section side top>
+                        <q-checkbox v-model="customizationForm.addons" :val="addon" dense />
+                      </q-item-section>
+                      <q-item-section>
+                        <q-item-label class="text-weight-medium">{{
+                          addon.name || addon.label
+                        }}</q-item-label>
+                        <q-item-label caption class="text-primary"
+                          >+${{ Number(addon.price || 0).toFixed(2) }}</q-item-label
+                        >
+                      </q-item-section>
+                    </q-item>
+                  </div>
                 </div>
               </div>
 
               <div>
-                <div class="text-subtitle2 text-grey-8 q-mb-sm font-weight-bold">Special Instructions</div>
+                <div class="text-subtitle2 text-grey-8 q-mb-sm font-weight-bold">
+                  Special Instructions
+                </div>
                 <q-input
                   v-model="customizationForm.note"
                   outlined
@@ -271,12 +343,27 @@
               </div>
             </q-card-section>
 
-            <q-card-actions class="q-pa-md bg-white border-top row items-center no-wrap q-gutter-x-md">
-              
+            <q-card-actions
+              class="q-pa-md bg-white border-top row items-center no-wrap q-gutter-x-md"
+            >
               <div class="row items-center bg-grey-2 rounded-capsule q-px-sm" style="height: 48px">
-                 <q-btn round flat dense icon="remove" color="grey-8" @click="customizationForm.quantity > 1 ? customizationForm.quantity-- : null" />
-                 <div class="q-px-md text-h6 text-weight-bold">{{ customizationForm.quantity }}</div>
-                 <q-btn round flat dense icon="add" color="grey-8" @click="customizationForm.quantity++" />
+                <q-btn
+                  round
+                  flat
+                  dense
+                  icon="remove"
+                  color="grey-8"
+                  @click="customizationForm.quantity > 1 ? customizationForm.quantity-- : null"
+                />
+                <div class="q-px-md text-h6 text-weight-bold">{{ customizationForm.quantity }}</div>
+                <q-btn
+                  round
+                  flat
+                  dense
+                  icon="add"
+                  color="grey-8"
+                  @click="customizationForm.quantity++"
+                />
               </div>
 
               <q-btn
@@ -287,8 +374,8 @@
                 @click="confirmAddToCart"
               >
                 <div class="row items-center justify-between full-width">
-                   <span>Add to Order</span>
-                   <span>${{ (customizedPrice * customizationForm.quantity).toFixed(2) }}</span>
+                  <span>Add to Order</span>
+                  <span>${{ (customizedPrice * customizationForm.quantity).toFixed(2) }}</span>
                 </div>
               </q-btn>
             </q-card-actions>
@@ -296,6 +383,7 @@
         </q-card>
       </q-dialog>
     </q-layout>
+    <ReceiptDialog v-model="showReceipt" :order="receiptOrder" />
   </q-dialog>
 </template>
 
@@ -303,7 +391,7 @@
 // ... (Keep your existing script exactly as it is)
 import { ref, computed, reactive, onMounted, onUnmounted } from 'vue'
 import { date, useQuasar } from 'quasar'
-import { db } from 'src/services/firebase' 
+import { db } from 'src/services/firebase'
 import { collection, onSnapshot, query, addDoc, serverTimestamp } from 'firebase/firestore'
 import { useAddonStore } from 'src/stores/addonStore'
 import { useOrderStore } from 'src/stores/orderStore'
@@ -311,6 +399,7 @@ import { logAudit } from 'src/services/auditService'
 import ProductCard from 'src/components/ordering/ProductCard.vue'
 import CustomerDetails from 'src/components/ordering/CustomerDetails.vue'
 import CheckoutSummary from 'src/components/ordering/CheckoutSummary.vue'
+import ReceiptDialog from 'src/components/ordering/ReceiptDialog.vue'
 
 // (Copy the rest of your script setup logic here exactly as provided in the prompt)
 // For brevity in the answer, I am assuming the script logic remains 100% identical.
@@ -322,15 +411,15 @@ import CheckoutSummary from 'src/components/ordering/CheckoutSummary.vue'
 defineProps({
   modelValue: Boolean,
 })
-const emit = defineEmits(['update:modelValue', 'create'])
+defineEmits(['update:modelValue', 'create'])
 
 // State
 const search = ref('')
 const selectedCategory = ref('All')
 const cart = ref([])
-const products = ref([]) 
+const products = ref([])
 const loadingProducts = ref(true)
-let unsubscribeProducts = null 
+let unsubscribeProducts = null
 
 const customer = ref({
   name: '',
@@ -416,7 +505,7 @@ const filteredActiveAddons = computed(() => {
 })
 
 const promptAddToCart = (product) => {
-  activeProduct.value = JSON.parse(JSON.stringify(product)) 
+  activeProduct.value = JSON.parse(JSON.stringify(product))
   customizationForm.size = product.sizes && product.sizes.length > 0 ? product.sizes[0] : null
   customizationForm.addons = []
   customizationForm.quantity = 1
@@ -503,7 +592,7 @@ const submitOrder = async (summaryData) => {
     customer: customer.value,
     customerName: customer.value.name || '',
     status: 'Paid',
-    ...summaryData, 
+    ...summaryData,
     itemCount: summaryData.itemCount,
     items: cart.value.map((item) => ({
       productId: item.product.id,
@@ -537,8 +626,8 @@ const submitOrder = async (summaryData) => {
         orderNumber: orderData.orderNumber,
         status: orderData.status,
         totalAmount: orderData.totalAmount,
-        customerName: orderData.customerName
-      }
+        customerName: orderData.customerName,
+      },
     })
     await orderStore.fetchOrders()
 
@@ -549,8 +638,13 @@ const submitOrder = async (summaryData) => {
       position: 'top-right',
     })
 
+    receiptOrder.value = {
+      ...orderData,
+      customerName: orderData.customerName,
+      date: new Date().toISOString(),
+    }
+    showReceipt.value = true
     clearCartSilently()
-    emit('update:modelValue', false)
   } catch (error) {
     console.error('POS Error:', error)
     $q.notify({
@@ -598,13 +692,18 @@ onUnmounted(() => {
 const $q = useQuasar()
 const addonStore = useAddonStore()
 const orderStore = useOrderStore()
-
+const showReceipt = ref(false)
+const receiptOrder = ref(null)
 </script>
 
 <style scoped lang="scss">
 /* Custom Utility Classes */
 .font-inter {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family:
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
 }
 
 .rounded-capsule {

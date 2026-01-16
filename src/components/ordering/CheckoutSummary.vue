@@ -6,15 +6,76 @@
       <div class="q-pa-sm bg-grey-1 rounded-borders">
         <div class="row justify-between items-center q-pb-xs">
           <span class="text-grey-7">Subtotal</span>
-          <span class="text-weight-medium">${{ formatPrice(subtotal) }}</span>
+          <span class="text-weight-medium">₱{{ formatPrice(subtotal) }}</span>
+        </div>
+        <div class="row q-col-gutter-sm q-pt-sm">
+          <div class="col-12 col-sm-6">
+            <q-input
+              v-model.number="taxValue"
+              outlined
+              dense
+              type="number"
+              min="0"
+              label="Tax (%)"
+              bg-color="white"
+              clearable
+            >
+              <template v-slot:prepend>
+                <q-icon name="percent" class="text-grey-6" />
+              </template>
+            </q-input>
+          </div>
         </div>
         <div class="row justify-between items-center q-py-xs">
-          <span class="text-grey-7">Tax ({{ (taxRate * 100).toFixed(0) }}%)</span>
-          <span>${{ formatPrice(taxAmount) }}</span>
+          <span class="text-grey-7">
+            Tax
+            <span>({{ (Number(taxValue) || 0).toFixed(0) }}%)</span>
+          </span>
+          <span>₱{{ formatPrice(taxAmount) }}</span>
+        </div>
+        <div class="row q-col-gutter-sm q-pt-sm">
+          <div class="col-12 col-sm-6">
+            <q-select
+              v-model="discountMode"
+              :options="amountOrPercentOptions"
+              outlined
+              dense
+              label="Discount Mode"
+              emit-value
+              map-options
+              bg-color="white"
+            >
+              <template v-slot:prepend>
+                <q-icon name="sell" class="text-grey-6" />
+              </template>
+            </q-select>
+          </div>
+          <div class="col-12 col-sm-6">
+            <q-input
+              v-model.number="discountValue"
+              outlined
+              dense
+              type="number"
+              min="0"
+              :label="discountMode === 'percent' ? 'Discount (%)' : 'Discount (₱)'"
+              bg-color="white"
+              clearable
+            >
+              <template v-slot:prepend>
+                <q-icon name="percent" class="text-grey-6" v-if="discountMode === 'percent'" />
+                <q-icon name="attach_money" class="text-grey-6" v-else />
+              </template>
+            </q-input>
+          </div>
         </div>
         <div class="row justify-between items-center q-pt-xs">
-          <span class="text-grey-7">Discount</span>
-          <span class="text-green">-${{ formatPrice(discountAmount) }}</span>
+          <span class="text-grey-7">
+            Discount
+            <span v-if="discountMode === 'percent'"
+              >({{ (Number(discountValue) || 0).toFixed(0) }}%)</span
+            >
+          </span>
+          <span class="text-green">-₱{{ formatPrice(discountAmount) }}</span>
         </div>
       </div>
 
@@ -26,9 +87,51 @@
           <div class="text-caption text-grey-6">Including all taxes</div>
         </div>
         <div class="text-right">
-          <div class="text-h3 text-primary text-weight-bolder">${{ formatPrice(totalAmount) }}</div>
+          <div class="text-h3 text-primary text-weight-bolder">₱{{ formatPrice(totalAmount) }}</div>
           <div class="text-caption text-grey-6">{{ totalItems }} items</div>
         </div>
+      </div>
+    </div>
+
+    <div class="q-pa-sm bg-grey-1 rounded-borders q-mb-md">
+      <div class="row q-col-gutter-sm items-center">
+        <div class="col-12 col-sm-6">
+          <q-select
+            v-model="paymentMode"
+            :options="paymentOptions"
+            outlined
+            dense
+            label="Payment Mode"
+            emit-value
+            map-options
+            bg-color="white"
+          >
+            <template v-slot:prepend>
+              <q-icon name="payments" class="text-grey-6" />
+            </template>
+          </q-select>
+        </div>
+        <div class="col-12 col-sm-6">
+          <q-input
+            v-model.number="amountPaid"
+            outlined
+            dense
+            type="number"
+            min="0"
+            label="Amount Paid"
+            bg-color="white"
+            :hint="`₱${formatPrice(amountPaid)}`"
+            clearable
+          >
+            <template v-slot:prepend>
+              <q-icon name="attach_money" class="text-grey-6" />
+            </template>
+          </q-input>
+        </div>
+      </div>
+      <div class="row justify-between items-center q-mt-sm">
+        <span class="text-grey-7">Change</span>
+        <span class="text-positive text-weight-medium">₱{{ formatPrice(change) }}</span>
       </div>
     </div>
 
@@ -118,13 +221,27 @@ const emit = defineEmits(['clear-cart', 'pay-now', 'save-draft'])
 
 // --- Computed Properties ---
 
-// Use || 0 to handle cases where props might be null while loading from Firebase
+// Dynamic tax/discount controls
+const amountOrPercentOptions = [
+  { label: 'Percent (%)', value: 'percent' },
+  { label: 'Amount (₱)', value: 'amount' },
+]
+import { ref } from 'vue'
+const taxValue = ref((props.taxRate || 0) * 100)
+const discountMode = ref('percent')
+const discountValue = ref((props.discountRate || 0) * 100)
+
 const taxAmount = computed(() => {
-  return (props.subtotal || 0) * (props.taxRate || 0)
+  const sub = props.subtotal || 0
+  const val = Number(taxValue.value || 0)
+  return (sub * Math.max(0, val)) / 100
 })
 
 const discountAmount = computed(() => {
-  return (props.subtotal || 0) * (props.discountRate || 0)
+  const sub = props.subtotal || 0
+  const val = Number(discountValue.value || 0)
+  if (discountMode.value === 'percent') return (sub * Math.max(0, val)) / 100
+  return Math.max(0, val)
 })
 
 const totalAmount = computed(() => {
@@ -143,6 +260,20 @@ const formatPrice = (val) => {
   return (val || 0).toFixed(2)
 }
 
+// --- Payment State & Derived ---
+const paymentOptions = [
+  { label: 'Cash', value: 'Cash' },
+  { label: 'GCash', value: 'GCash' },
+  { label: 'Card', value: 'Card' },
+]
+const paymentMode = ref('Cash')
+const amountPaid = ref(totalAmount.value)
+const change = computed(() => {
+  const paid = Number(amountPaid.value || 0)
+  const total = Number(totalAmount.value || 0)
+  return Math.max(0, paid - total)
+})
+
 const handlePayNow = () => {
   // IMPORTANT: We emit the calculated values to the parent.
   // The parent will take this object and write it directly to Firestore.
@@ -153,6 +284,13 @@ const handlePayNow = () => {
     discountAmount: Number(discountAmount.value.toFixed(2)),
     totalAmount: Number(totalAmount.value.toFixed(2)),
     itemCount: props.totalItems,
+    taxMode: 'percent',
+    taxValue: Number((taxValue.value || 0).toFixed(2)),
+    discountMode: discountMode.value,
+    discountValue: Number((discountValue.value || 0).toFixed(2)),
+    paymentMode: paymentMode.value,
+    amountPaid: Number(amountPaid.value.toFixed(2)),
+    change: Number(change.value.toFixed(2)),
   }
 
   emit('pay-now', orderSummary)
