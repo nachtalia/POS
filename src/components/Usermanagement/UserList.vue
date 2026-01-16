@@ -30,15 +30,41 @@
       >
         <template v-slot:body-cell-permissions="props">
           <q-td :props="props">
-            <div class="q-gutter-xs">
-              <q-badge 
-                v-for="permission in props.row.roles" 
-                :key="permission" 
-                :color="getPermissionColor(permission)"
-                class="q-px-sm q-py-xs"
-              >
-                {{ getPermissionLabel(permission) }}
-              </q-badge>
+            <div class="permissions-container">
+              <div v-if="!props.row.showAllPermissions" class="permissions-limited">
+                <q-badge
+                  v-for="permission in getLimitedPermissions(props.row)"
+                  :key="permission"
+                  :color="getPermissionColor(permission)"
+                  class="q-px-sm q-py-xs q-mr-xs q-mb-xs"
+                >{{ getPermissionLabel(permission) }}</q-badge>
+                
+                <q-badge
+                  v-if="hasMorePermissions(props.row)"
+                  color="grey-6"
+                  class="q-px-sm q-py-xs q-mr-xs q-mb-xs cursor-pointer"
+                  @click="togglePermissions(props.row)"
+                >
+                  +{{ getMoreCount(props.row) }} more
+                </q-badge>
+              </div>
+              
+              <div v-else class="permissions-full">
+                <q-badge
+                  v-for="permission in getAllPermissions(props.row)"
+                  :key="permission"
+                  :color="getPermissionColor(permission)"
+                  class="q-px-sm q-py-xs q-mr-xs q-mb-xs"
+                >{{ getPermissionLabel(permission) }}</q-badge>
+                
+                <q-badge
+                  color="grey-6"
+                  class="q-px-sm q-py-xs q-mr-xs q-mb-xs cursor-pointer"
+                  @click="togglePermissions(props.row)"
+                >
+                  Show less
+                </q-badge>
+              </div>
             </div>
           </q-td>
         </template>
@@ -113,10 +139,11 @@ const props = defineProps({
 defineEmits(['manage-roles', 'edit', 'delete'])
 
 const search = ref('')
+const expandedRows = ref({}) // Store which rows are expanded
 
 const columns = [
   { name: 'username', label: 'Username', field: 'username', align: 'left', sortable: true },
-  { name: 'permissions', label: 'Permissions', field: 'roles', align: 'left', sortable: true },
+  { name: 'permissions', label: 'Permissions', field: 'permissions', align: 'left', sortable: true },
   { name: 'createdAt', label: 'Created Date', field: 'formattedCreatedAt', align: 'left', sortable: true, width: '200px' },
   { name: 'actions', label: 'Actions', field: 'actions', align: 'center', sortable: false, width: '180px' },
 ]
@@ -125,9 +152,10 @@ const filteredUsers = computed(() => {
   let filtered = props.users
   if (search.value) {
     const searchTerm = search.value.toLowerCase()
-    filtered = filtered.filter(user => 
+    filtered = filtered.filter(user =>
       (user.username && user.username.toLowerCase().includes(searchTerm)) ||
-      (user.roles && user.roles.some(role => role.toLowerCase().includes(searchTerm)))
+      (Array.isArray(user.permissions) && user.permissions.some(p => String(p).toLowerCase().includes(searchTerm))) ||
+      (Array.isArray(user.roles) && user.roles.some(role => String(role).toLowerCase().includes(searchTerm)))
     )
   }
   return filtered
@@ -135,15 +163,16 @@ const filteredUsers = computed(() => {
 
 const formattedUsers = computed(() => {
   return filteredUsers.value.map(user => {
-    // Try to find the created date in various possible fields
-    let dateValue = user.createdAt || user.created_at || user.createdDate || 
+    let dateValue = user.createdAt || user.created_at || user.createdDate ||
                     user.created_date || user.dateCreated || user.date_created ||
                     user.registrationDate || user.registration_date ||
                     user.created || user.date
-    
+
     return {
       ...user,
-      formattedCreatedAt: formatFirestoreTimestamp(dateValue)
+      permissions: extractPermissions(user),
+      formattedCreatedAt: formatFirestoreTimestamp(dateValue),
+      showAllPermissions: expandedRows.value[user.username] || false
     }
   })
 })
@@ -152,7 +181,7 @@ const formatFirestoreTimestamp = (timestamp) => {
   if (!timestamp) {
     return 'N/A'
   }
-  
+
   try {
     let date
     
@@ -229,7 +258,64 @@ const getPermissionColor = (permission) => {
     default: return 'grey'
   }
 }
+
+const extractPermissions = (user) => {
+  const incoming = Array.isArray(user?.permissions)
+    ? user.permissions
+    : (Array.isArray(user?.roles) ? user.roles : [])
+  return Array.from(new Set(incoming.map(p => String(p))))
+}
+
+const getAllPermissions = (row) => {
+  return Array.isArray(row?.permissions) ? row.permissions : extractPermissions(row)
+}
+
+const getLimitedPermissions = (row) => {
+  const allPermissions = getAllPermissions(row)
+  return allPermissions.slice(0, 3) // Show only 3 permissions initially
+}
+
+const hasMorePermissions = (row) => {
+  const allPermissions = getAllPermissions(row)
+  return allPermissions.length > 3
+}
+
+const getMoreCount = (row) => {
+  const allPermissions = getAllPermissions(row)
+  return allPermissions.length - 3
+}
+
+const togglePermissions = (row) => {
+  expandedRows.value[row.username] = !expandedRows.value[row.username]
+}
 </script>
 
 <style scoped>
+.permissions-container {
+  min-height: 40px;
+}
+
+.permissions-limited,
+.permissions-full {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.q-badge {
+  flex-shrink: 0;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.cursor-pointer:hover {
+  opacity: 0.8;
+}
 </style>
