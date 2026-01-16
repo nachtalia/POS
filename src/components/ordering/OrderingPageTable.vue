@@ -17,6 +17,7 @@
               no-caps
               class="q-px-md"
               @click="showPOSDialog = true"
+              v-if="canCreateOrder"
             />
           </div>
 
@@ -146,6 +147,7 @@ import { collection, onSnapshot, query, orderBy } from 'firebase/firestore'
 
 import POSOrderDialog from 'src/components/ordering/POSOrderingDialog.vue'
 import ReceiptDialog from 'src/components/ordering/ReceiptDialog.vue'
+import { useAuthStore } from 'src/features/index.js'
 
 const orders = ref([])
 const products = ref([])
@@ -157,6 +159,14 @@ const showPOSDialog = ref(false)
 const showReceiptDialog = ref(false)
 const selectedOrder = ref(null)
 const statusOptions = ['All', 'Pending', 'Paid', 'Shipped', 'Cancelled']
+const authStore = useAuthStore()
+const has = (perm) =>
+  authStore.isSuperAdmin ||
+  authStore.permissions.includes('*') ||
+  authStore.permissions.includes(perm)
+const canCreateOrder = computed(
+  () => authStore.can('create', 'ordering') || has('ordering:create'),
+)
 
 let unsubscribeOrders = null
 let unsubscribeProducts = null

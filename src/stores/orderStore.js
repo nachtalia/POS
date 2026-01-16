@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { db } from '../services/firebase'
 import { collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore'
+import { logAudit } from '../services/auditService'
 
 export const useOrderStore = defineStore('orderStore', {
   state: () => ({
@@ -31,6 +32,13 @@ export const useOrderStore = defineStore('orderStore', {
           createdAt: serverTimestamp()
         })
         this.orders.push({ id: docRef.id, ...orderData })
+        await logAudit({
+          module: 'ordering',
+          action: 'add',
+          entityType: 'order',
+          entityId: docRef.id,
+          details: orderData
+        })
       } catch (err) {
         console.error("Error creating order:", err)
         throw err

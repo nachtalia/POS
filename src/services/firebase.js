@@ -21,6 +21,8 @@ const app = initializeApp(firebaseConfig)
 const analytics = getAnalytics(app)
 const db = getFirestore(app)
 const auth = getAuth(app) // 2. Initialize Auth
+const secondaryApp = initializeApp(firebaseConfig, 'Secondary')
+const secondaryAuth = getAuth(secondaryApp)
 
 // 3. Export auth so other files can use it
-export { app, analytics, db, auth }
+export { app, analytics, db, auth, secondaryAuth }

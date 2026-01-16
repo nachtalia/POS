@@ -233,10 +233,15 @@ const canAccess = (route) => {
   }
 
   if (route.meta?.permissions) {
+    const effectivePerms = Array.isArray(authStore.permissions) && authStore.permissions.length > 0
+      ? authStore.permissions
+      : fetchedPermissions.value
+    const userPermsLower = effectivePerms.map((p) => String(p).toLowerCase())
     const hasPermission = route.meta.permissions.some((requiredPerm) => {
-      if (fetchedPermissions.value.includes(requiredPerm)) return true
-      const resource = String(requiredPerm).split(':')[0]
-      return fetchedPermissions.value.some((p) => p.startsWith(resource + ':'))
+      const permLower = String(requiredPerm).toLowerCase()
+      if (userPermsLower.includes(permLower)) return true
+      const resource = permLower.split(':')[0]
+      return userPermsLower.some((p) => p.startsWith(resource + ':'))
     })
     return hasPermission
   }

@@ -11,7 +11,6 @@ import routes from './routes'
 import { useAuthStore } from 'src/features/index.js'
 import { auth, db } from 'src/services/firebase'
 import { onAuthStateChanged } from 'firebase/auth'
-import { doc, getDoc } from 'firebase/firestore'
 import { Notify } from 'quasar'
 
 /*
@@ -61,11 +60,12 @@ export default route(function (/* { store, ssrContext } */) {
         // User is logged in via Firebase, but Store is empty (Refresh happened)
         // We need to fetch the Role from Firestore again to populate the store
         try {
-          // Note: Assuming your collection is 'user' based on previous context
-          const userDoc = await getDoc(doc(db, 'user', firebaseUser.uid)) // or 'users'
+          const { collection, query, where, limit, getDocs } = await import('firebase/firestore')
+          const q = query(collection(db, 'user'), where('email', '==', firebaseUser.email), limit(1))
+          const snap = await getDocs(q)
 
-          if (userDoc.exists()) {
-            const userData = userDoc.data()
+          if (!snap.empty) {
+            const userData = snap.docs[0].data()
 
             // Repopulate Store
             authStore.setUser({
@@ -78,7 +78,11 @@ export default route(function (/* { store, ssrContext } */) {
             // Wait for permissions to be fetched (setUser triggers fetchPermissions)
             // But we add a small delay or check to ensure permissions are ready
             // (Store action is async, so better to explicitly await fetchPermissions if possible)
-            await authStore.fetchPermissions()
+                await authStore.fetchPermissions()
+                const existing = Array.isArray(authStore.permissions) ? authStore.permissions : []
+                const userPerms = Array.isArray(userData.permissions) ? userData.permissions : []
+                const merged = Array.from(new Set([...(existing || []), ...(userPerms || [])]))
+                authStore.setPermissions(merged)
           }
         } catch (error) {
           console.error('Error restoring session:', error)
@@ -108,10 +112,12 @@ export default route(function (/* { store, ssrContext } */) {
       }
 
       // 2. Allow if user has the exact permission OR any permission with the same resource prefix
+      const userPermsLower = (authStore.permissions || []).map((p) => String(p).toLowerCase())
       const hasPermission = to.meta.permissions.some((perm) => {
-        if (authStore.permissions.includes(perm)) return true
-        const resource = String(perm).split(':')[0]
-        return authStore.permissions.some((p) => p.startsWith(resource + ':'))
+        const permLower = String(perm).toLowerCase()
+        if (userPermsLower.includes(permLower)) return true
+        const resource = permLower.split(':')[0]
+        return userPermsLower.some((p) => p.startsWith(resource + ':'))
       })
 
       if (hasPermission) {

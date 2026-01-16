@@ -42,13 +42,15 @@
                 />
               </div>
               <div class="col-12 col-md-4" v-if="selectedInventoryTab === 'products'">
-                <q-select
-                  v-model="selectedStock"
-                  :options="stockOptions"
-                  outlined
-                  dense
-                  label="Stock"
-                  emit-value
+                <q-btn-toggle
+                  v-model="selectedProductView"
+                  spread
+                  toggle-color="primary"
+                  unelevated
+                  :options="[
+                    { label: 'Catalog', value: 'catalog', icon: 'grid_on' },
+                    { label: 'Table', value: 'table', icon: 'table_rows' },
+                  ]"
                 />
               </div>
               <div class="col-12 col-md-4" v-if="selectedInventoryTab === 'addons'">
@@ -78,12 +80,14 @@
                   label="Add Category"
                   class="q-mr-sm"
                   @click="showAddCategoryDialog = true"
+                  v-if="canAddCategory"
                 />
                 <q-btn
                   color="primary"
                   icon="add"
                   label="Add Product"
                   @click="showAddProductDialog = true"
+                  v-if="canAddProduct"
                 />
                 <q-btn
                   color="secondary"
@@ -99,6 +103,7 @@
                   icon="add"
                   label="Add Add-on"
                   @click="showAddAddonDialog = true"
+                  v-if="canAddAddon"
                 />
               </div>
             </div>
@@ -110,7 +115,7 @@
               :loading="productStore.loading"
               flat
               bordered
-              v-if="selectedInventoryTab === 'products'"
+              v-if="selectedInventoryTab === 'products' && selectedProductView === 'table'"
             >
               <template v-slot:no-data="{ filter }">
                 <div class="full-width row flex-center q-gutter-sm q-pa-lg text-grey-8">
@@ -127,6 +132,7 @@
                     icon="edit"
                     color="primary"
                     @click="openEditDialog(props.row)"
+                    v-if="canEditProduct"
                   />
                   <q-btn
                     flat
@@ -135,27 +141,67 @@
                     icon="delete"
                     color="negative"
                     @click="confirmDelete(props.row)"
+                    v-if="canDeleteProduct"
                   />
                 </q-td>
               </template>
-              <template v-slot:body-cell-stock="props">
-                <q-td :props="props">
-                  <q-chip
-                    :color="
-                      props.row.productStock < 10
-                        ? 'negative'
-                        : props.row.productStock < 50
-                          ? 'warning'
-                          : 'positive'
-                    "
-                    text-color="white"
-                    dense
-                  >
-                    {{ props.row.productStock }}
-                  </q-chip>
-                </q-td>
-              </template>
+              <!-- removed stock cell -->
             </q-table>
+
+            <div v-if="selectedInventoryTab === 'products' && selectedProductView === 'catalog'">
+              <div class="row q-col-gutter-md">
+                <div
+                  v-for="p in filteredProducts"
+                  :key="p.id"
+                  class="col-6 col-sm-4 col-md-3 col-lg-2"
+                >
+                  <q-card class="shadow-1 catalog-card">
+                    <q-img
+                      :src="p.productImage || placeholderImage"
+                      class="rounded-borders"
+                      style="height: 120px"
+                    >
+                      <template v-slot:error>
+                        <div class="absolute-full flex flex-center bg-grey-3 text-grey">
+                          <q-icon name="image_not_supported" />
+                        </div>
+                      </template>
+                    </q-img>
+                    <q-card-section>
+                      <div class="text-weight-bold text-grey-9">{{ p.productName }}</div>
+                      <div class="row items-center justify-between q-mt-xs">
+                        <q-chip dense color="grey-3" text-color="grey-8" v-if="p.productCategory">
+                          {{ p.productCategory }}
+                        </q-chip>
+                        <div class="text-weight-bold text-primary">
+                          ${{ Number(p.productPrice || 0).toFixed(2) }}
+                        </div>
+                      </div>
+                    </q-card-section>
+                    <q-card-actions align="right">
+                      <q-btn
+                        flat
+                        round
+                        dense
+                        icon="edit"
+                        color="primary"
+                        @click="openEditDialog(p)"
+                        v-if="canEditProduct"
+                      />
+                      <q-btn
+                        flat
+                        round
+                        dense
+                        icon="delete"
+                        color="negative"
+                        @click="confirmDelete(p)"
+                        v-if="canDeleteProduct"
+                      />
+                    </q-card-actions>
+                  </q-card>
+                </div>
+              </div>
+            </div>
 
             <q-table
               :rows="filteredAddons"
@@ -175,8 +221,24 @@
               </template>
               <template v-slot:body-cell-actions="props">
                 <q-td :props="props">
-                  <q-btn flat round dense icon="edit" color="primary" @click="openEditAddonDialog(props.row)" />
-                  <q-btn flat round dense icon="delete" color="negative" @click="confirmDeleteAddon(props.row)" />
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="edit"
+                    color="primary"
+                    @click="openEditAddonDialog(props.row)"
+                    v-if="canEditAddon"
+                  />
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="delete"
+                    color="negative"
+                    @click="confirmDeleteAddon(props.row)"
+                    v-if="canDeleteAddon"
+                  />
                 </q-td>
               </template>
               <template v-slot:no-data>
@@ -236,17 +298,7 @@
               </div>
             </div>
 
-            <q-input
-              v-model.number="productForm.productStock"
-              label="Stock Quantity"
-              type="number"
-              outlined
-              dense
-              :rules="[
-                (val) => (val !== null && val !== '') || 'Stock is required',
-                (val) => val >= 0 || 'Cannot be negative',
-              ]"
-            />
+            <!-- removed stock quantity input -->
 
             <q-select
               v-model="productForm.productCategory"
@@ -258,7 +310,13 @@
             />
             <div class="row q-col-gutter-sm items-center">
               <div class="col-12">
-                <q-file v-model="productImageFile" accept="image/*" outlined dense label="Product Image">
+                <q-file
+                  v-model="productImageFile"
+                  accept="image/*"
+                  outlined
+                  dense
+                  label="Product Image"
+                >
                   <template v-slot:prepend><q-icon name="image" /></template>
                   <template v-slot:append v-if="productImageFile">
                     <q-icon name="close" class="cursor-pointer" @click="clearImage" />
@@ -266,7 +324,7 @@
                 </q-file>
               </div>
               <div class="col-12" v-if="productImagePreview">
-                <q-img :src="productImagePreview" style="height: 140px" class="rounded-borders" />
+                <q-img :src="productImagePreview" style="height: 140%" class="rounded-borders" />
               </div>
             </div>
           </q-form>
@@ -323,30 +381,15 @@
           <div class="text-caption">Choose export format</div>
         </q-card-section>
         <q-card-section>
-          <q-option-group
-            v-model="exportFormat"
-            :options="formatOptions"
-            color="primary"
-            inline
-          />
+          <q-option-group v-model="exportFormat" :options="formatOptions" color="primary" inline />
           <q-separator spaced />
           <q-toggle v-model="exportUseTableFilters" label="Use current table filters" />
           <div v-if="!exportUseTableFilters" class="q-mt-md row q-col-gutter-sm">
-            <div class="col-12 col-md-6">
+            <div class="col-12">
               <q-select
                 v-model="exportCategory"
                 :options="categoryOptions"
                 label="Category"
-                outlined
-                dense
-                emit-value
-              />
-            </div>
-            <div class="col-12 col-md-6">
-              <q-select
-                v-model="exportStock"
-                :options="stockOptions"
-                label="Stock"
                 outlined
                 dense
                 emit-value
@@ -368,16 +411,70 @@
         </q-card-section>
         <q-card-section>
           <q-form ref="addonFormRef" class="q-gutter-md">
-            <q-input v-model="addonForm.name" label="Add-On Name" outlined dense :rules="[(v)=>!!v || 'Required']" />
-            <q-select v-model="addonForm.category" :options="addonCategoryOptions" label="Category" outlined dense emit-value :rules="[(v)=>!!v || 'Required']" />
-            <q-input v-model.number="addonForm.price" label="Price" type="number" outlined dense :rules="[(v)=>v!==null && v!=='' || 'Required', (v)=>v>=0 || 'Cannot be negative']" />
-            <q-input v-model.number="addonForm.stock" label="Stock (optional)" type="number" outlined dense />
-            <q-select v-model="addonForm.status" :options="statusOptions" label="Status" outlined dense emit-value :rules="[(v)=>!!v || 'Required']" />
+            <q-input
+              v-model="addonForm.name"
+              label="Add-On Name"
+              outlined
+              dense
+              :rules="[(v) => !!v || 'Required']"
+            />
+            <q-select
+              v-model="addonForm.category"
+              :options="addonCategoryOptions"
+              label="Category"
+              outlined
+              dense
+              emit-value
+              :rules="[(v) => !!v || 'Required']"
+            />
+            <q-input
+              v-model.number="addonForm.price"
+              label="Price"
+              type="number"
+              outlined
+              dense
+              :rules="[
+                (v) => (v !== null && v !== '') || 'Required',
+                (v) => v >= 0 || 'Cannot be negative',
+              ]"
+            />
+            <q-input
+              v-model.number="addonForm.stock"
+              label="Stock (optional)"
+              type="number"
+              outlined
+              dense
+            />
+            <q-select
+              v-model="addonForm.status"
+              :options="statusOptions"
+              label="Status"
+              outlined
+              dense
+              emit-value
+              :rules="[(v) => !!v || 'Required']"
+            />
+            <q-select
+              v-model="addonForm.allowedProductIds"
+              :options="productOptions"
+              label="Allowed Products"
+              outlined
+              dense
+              multiple
+              emit-value
+              map-options
+            />
           </q-form>
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="Cancel" color="primary" @click="closeAddonDialog" />
-          <q-btn flat label="Save" color="primary" @click="submitAddon" :loading="addonStore.loading" />
+          <q-btn
+            flat
+            label="Save"
+            color="primary"
+            @click="submitAddon"
+            :loading="addonStore.loading"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -389,17 +486,21 @@ import { ref, computed, reactive, onMounted, watch } from 'vue'
 import { useProductStore } from '../../stores/productStore'
 import { useCategoryStore } from '../../stores/categoryStore'
 import { useAddonStore } from '../../stores/addonStore'
+import { useAuthStore } from 'src/features/index.js'
 import { useQuasar } from 'quasar'
 
 const $q = useQuasar()
 const productStore = useProductStore()
 const categoryStore = useCategoryStore()
 const addonStore = useAddonStore()
+const authStore = useAuthStore()
 
 const searchQuery = ref('')
 const selectedCategory = ref('All')
-const selectedStock = ref('All')
+// removed stock filtering
 const selectedInventoryTab = ref('products')
+const selectedProductView = ref('catalog')
+const placeholderImage = 'https://via.placeholder.com/300?text=No+Image'
 const showAddProductDialog = ref(false)
 const editingProduct = ref(null)
 const showAddCategoryDialog = ref(false)
@@ -410,13 +511,31 @@ const editingAddon = ref(null)
 const myForm = ref(null)
 const addonFormRef = ref(null)
 
+const has = (perm) =>
+  authStore.isSuperAdmin ||
+  authStore.permissions.includes('*') ||
+  authStore.permissions.includes(perm)
+const canAddCategory = computed(
+  () => authStore.can('addCategory', 'inventory') || has('inventory:addCategory'),
+)
+const canAddProduct = computed(
+  () => authStore.can('addProduct', 'inventory') || has('inventory:addProduct'),
+)
+const canEditProduct = computed(
+  () => authStore.can('editProduct', 'inventory') || has('inventory:editProduct'),
+)
+const canDeleteProduct = computed(
+  () => authStore.can('deleteProduct', 'inventory') || has('inventory:deleteProduct'),
+)
+const canAddAddon = computed(() => authStore.can('add', 'addons') || has('addons:add'))
+const canEditAddon = computed(() => authStore.can('edit', 'addons') || has('addons:edit'))
+const canDeleteAddon = computed(() => authStore.can('delete', 'addons') || has('addons:delete'))
 const productForm = reactive({
   productName: '',
   productPrice: 0,
   productCost: 0,
-  productStock: 0,
   productCategory: '',
-  productImage: ''
+  productImage: '',
 })
 
 const categoryForm = reactive({ name: '', description: '' })
@@ -425,7 +544,8 @@ const addonForm = reactive({
   category: '',
   price: 0,
   stock: null,
-  status: 'Available'
+  status: 'Available',
+  allowedProductIds: [],
 })
 const productImageFile = ref(null)
 const productImagePreview = ref('')
@@ -467,13 +587,20 @@ const columns = [
     sortable: true,
     format: (val) => `$${Number(val).toFixed(2)}`,
   },
-  { name: 'stock', label: 'Stock', field: 'productStock', align: 'center', sortable: true },
+  // removed stock column
   { name: 'actions', label: 'Actions', field: 'actions', align: 'center' },
 ]
 const addonColumns = [
   { name: 'name', label: 'Add-On Name', field: 'name', align: 'left', sortable: true },
   { name: 'category', label: 'Category', field: 'category', align: 'left', sortable: true },
-  { name: 'price', label: 'Price', field: 'price', align: 'right', sortable: true, format: (v)=>`$${Number(v||0).toFixed(2)}` },
+  {
+    name: 'price',
+    label: 'Price',
+    field: 'price',
+    align: 'right',
+    sortable: true,
+    format: (v) => `$${Number(v || 0).toFixed(2)}`,
+  },
   { name: 'stock', label: 'Stock', field: 'stock', align: 'center', sortable: true },
   { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
   { name: 'actions', label: 'Actions', field: 'actions', align: 'center' },
@@ -490,9 +617,12 @@ const categoryOptions = computed(() => [
   ...(categoryStore.categories || []).map((c) => c.name),
 ])
 const categoriesForForm = computed(() => (categoryStore.categories || []).map((c) => c.name))
-const stockOptions = ['All', 'Out of Stock', 'Low', 'Medium', 'High']
+// removed stock options
 const addonCategoryOptions = ['Toppings', 'Extras']
 const statusOptions = ['Available', 'Unavailable']
+const productOptions = computed(() =>
+  (productStore.products || []).map((p) => ({ label: p.productName, value: p.id })),
+)
 const selectedAddonAvailability = ref('All')
 const selectedAddonCategory = ref('All')
 const addonAvailabilityOptions = ['All', 'Available', 'Unavailable']
@@ -501,26 +631,17 @@ const showExportDialog = ref(false)
 const exportFormat = ref('csv')
 const formatOptions = [
   { label: 'CSV', value: 'csv' },
-  { label: 'PDF', value: 'pdf' }
+  { label: 'PDF', value: 'pdf' },
 ]
 const exportUseTableFilters = ref(true)
 const exportCategory = ref('All')
-const exportStock = ref('All')
+// removed export stock filter
 
 const filteredProducts = computed(() => {
   let items = productStore.products || []
   if (selectedCategory.value !== 'All')
     items = items.filter((p) => p.productCategory === selectedCategory.value)
-  if (selectedStock.value !== 'All') {
-    items = items.filter((p) => {
-      const s = Number(p.productStock) || 0
-      if (selectedStock.value === 'Out of Stock') return s === 0
-      if (selectedStock.value === 'Low') return s > 0 && s < 10
-      if (selectedStock.value === 'Medium') return s >= 10 && s < 50
-      if (selectedStock.value === 'High') return s >= 50
-      return true
-    })
-  }
+  // removed stock filtering
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
     items = items.filter(
@@ -534,17 +655,18 @@ const filteredProducts = computed(() => {
 const filteredAddons = computed(() => {
   let list = addonStore.addons || []
   if (selectedAddonAvailability.value !== 'All') {
-    list = list.filter(a => a.status === selectedAddonAvailability.value)
+    list = list.filter((a) => a.status === selectedAddonAvailability.value)
   }
   if (selectedAddonCategory.value !== 'All') {
-    list = list.filter(a => a.category === selectedAddonCategory.value)
+    list = list.filter((a) => a.category === selectedAddonCategory.value)
   }
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
-    list = list.filter(a =>
-      (a.name && a.name.toLowerCase().includes(q)) ||
-      (a.category && a.category.toLowerCase().includes(q)) ||
-      (a.status && a.status.toLowerCase().includes(q))
+    list = list.filter(
+      (a) =>
+        (a.name && a.name.toLowerCase().includes(q)) ||
+        (a.category && a.category.toLowerCase().includes(q)) ||
+        (a.status && a.status.toLowerCase().includes(q)),
     )
   }
   return list
@@ -556,9 +678,8 @@ const openEditDialog = (product) => {
     productName: product.productName,
     productPrice: product.productPrice,
     productCost: product.productCost,
-    productStock: product.productStock,
     productCategory: product.productCategory,
-    productImage: product.productImage || ''
+    productImage: product.productImage || '',
   })
   showAddProductDialog.value = true
 }
@@ -570,7 +691,8 @@ const openEditAddonDialog = (addon) => {
     category: addon.category,
     price: addon.price,
     stock: addon.stock,
-    status: addon.status
+    status: addon.status,
+    allowedProductIds: Array.isArray(addon.allowedProductIds) ? [...addon.allowedProductIds] : [],
   })
   showAddAddonDialog.value = true
 }
@@ -642,7 +764,7 @@ const confirmDeleteAddon = (addon) => {
     title: 'Delete Add-on',
     message: `Remove ${addon.name}?`,
     cancel: true,
-    persistent: true
+    persistent: true,
   }).onOk(async () => {
     try {
       await addonStore.deleteAddon(addon.id)
@@ -661,7 +783,8 @@ const closeAddonDialog = () => {
     category: '',
     price: 0,
     stock: null,
-    status: 'Available'
+    status: 'Available',
+    allowedProductIds: [],
   })
 }
 
@@ -689,9 +812,8 @@ const closeProductDialog = () => {
     productName: '',
     productPrice: 0,
     productCost: 0,
-    productStock: 0,
     productCategory: '',
-    productImage: ''
+    productImage: '',
   })
   clearImage()
 }
@@ -702,18 +824,9 @@ const getRowsForExport = () => {
   }
   let items = productStore.products || []
   if (exportCategory.value !== 'All') {
-    items = items.filter(p => p.productCategory === exportCategory.value)
+    items = items.filter((p) => p.productCategory === exportCategory.value)
   }
-  if (exportStock.value !== 'All') {
-    items = items.filter(p => {
-      const s = Number(p.productStock) || 0
-      if (exportStock.value === 'Out of Stock') return s === 0
-      if (exportStock.value === 'Low') return s > 0 && s < 10
-      if (exportStock.value === 'Medium') return s >= 10 && s < 50
-      if (exportStock.value === 'High') return s >= 50
-      return true
-    })
-  }
+  // removed export stock filter
   return items
 }
 
@@ -723,25 +836,24 @@ const exportInventoryCSV = () => {
     $q.notify({ color: 'warning', message: 'No products to export', icon: 'warning' })
     return
   }
-  const header = ['Product Name', 'Category', 'Price', 'Cost', 'Stock']
-  const dataLines = rows.map(p => [
+  const header = ['Product Name', 'Category', 'Price', 'Cost']
+  const dataLines = rows.map((p) => [
     p.productName ?? '',
     p.productCategory ?? '',
     Number(p.productPrice ?? 0).toFixed(2),
     Number(p.productCost ?? 0).toFixed(2),
-    String(p.productStock ?? 0)
   ])
-  const escape = v => {
+  const escape = (v) => {
     const s = String(v).replace(/"/g, '""')
     if (/[",\n]/.test(s)) return `"${s}"`
     return s
   }
-  const csv = [header, ...dataLines].map(line => line.map(escape).join(',')).join('\n')
+  const csv = [header, ...dataLines].map((line) => line.map(escape).join(',')).join('\n')
   const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `inventory-${new Date().toISOString().slice(0,10)}.csv`
+  a.download = `inventory-${new Date().toISOString().slice(0, 10)}.csv`
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
@@ -777,25 +889,35 @@ const exportInventoryPDF = () => {
               <th>Category</th>
               <th>Price</th>
               <th>Cost</th>
-              <th>Stock</th>
+<<<<<<< HEAD
+=======
+             
+>>>>>>> 652618933f7dc5e9c1c0875e6e7f01e21d999180
             </tr>
           </thead>
           <tbody>
-            ${rows.map(p => `
+            ${rows
+              .map(
+                (p) => `
               <tr>
-                <td>${(p.productName ?? '').toString().replace(/</g,'&lt;')}</td>
-                <td>${(p.productCategory ?? '').toString().replace(/</g,'&lt;')}</td>
+                <td>${(p.productName ?? '').toString().replace(/</g, '&lt;')}</td>
+                <td>${(p.productCategory ?? '').toString().replace(/</g, '&lt;')}</td>
                 <td>${Number(p.productPrice ?? 0).toFixed(2)}</td>
                 <td>${Number(p.productCost ?? 0).toFixed(2)}</td>
-                <td>${String(p.productStock ?? 0)}</td>
-              </tr>`).join('')}
+              </tr>`,
+              )
+              .join('')}
           </tbody>
         </table>
       </body>
     </html>`
   const printWin = window.open('', '_blank')
   if (!printWin) {
-    $q.notify({ color: 'negative', message: 'Popup blocked. Allow popups to export PDF.', icon: 'report_problem' })
+    $q.notify({
+      color: 'negative',
+      message: 'Popup blocked. Allow popups to export PDF.',
+      icon: 'report_problem',
+    })
     return
   }
   printWin.document.write(html)
@@ -803,7 +925,11 @@ const exportInventoryPDF = () => {
   printWin.focus()
   printWin.print()
   printWin.close()
-  $q.notify({ color: 'positive', message: `Prepared PDF for ${rows.length} products`, icon: 'download' })
+  $q.notify({
+    color: 'positive',
+    message: `Prepared PDF for ${rows.length} products`,
+    icon: 'download',
+  })
 }
 
 const executeExport = () => {
@@ -857,3 +983,14 @@ const closeCategoryDialog = () => {
   Object.assign(categoryForm, { name: '', description: '' })
 }
 </script>
+<style scoped>
+.catalog-card .q-card__section {
+  padding: 8px;
+}
+.catalog-card .q-card__actions {
+  padding: 8px;
+}
+.catalog-card .text-weight-bold {
+  font-size: 13px;
+}
+</style>

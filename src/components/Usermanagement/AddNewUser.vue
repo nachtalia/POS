@@ -1,10 +1,11 @@
 <template>
   <q-card class="q-mb-md">
-    <q-card-section>
-      <div class="text-h6 text-blue-grey-8 q-mb-md">Add New User</div>
-      <div class="row q-col-gutter-md">
-        <div class="col-12 col-md-6">
+    <q-card-section class="q-pa-sm">
+      <div class="text-h6 text-blue-grey-8 q-mb-sm">Add New User</div>
+      <div class="row q-col-gutter-sm">
+        <div class="col-12 col-md-4">
           <q-input 
+            dense
             outlined 
             v-model="username" 
             label="Username" 
@@ -12,8 +13,9 @@
             lazy-rules
           />
         </div>
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-4">
           <q-input 
+            dense
             outlined 
             v-model="email" 
             label="Email" 
@@ -25,8 +27,9 @@
             lazy-rules
           />
         </div>
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-4">
           <q-input 
+            dense
             outlined 
             v-model="password" 
             label="Password" 
@@ -38,19 +41,22 @@
               <q-icon
                 :name="showPassword ? 'visibility_off' : 'visibility'"
                 class="cursor-pointer"
+                size="xs"
                 @click="showPassword = !showPassword"
               />
             </template>
           </q-input>
         </div>
       </div>
-      <div class="row justify-end q-mt-md">
+      <div class="row justify-end q-mt-sm">
         <q-btn 
+          dense
           color="primary" 
           label="Add User" 
           @click="submit"
           :disable="!isFormValid"
           icon="person_add"
+          size="md"
         />
       </div>
     </q-card-section>

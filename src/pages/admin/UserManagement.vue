@@ -10,13 +10,16 @@
           </div>
         </div>
 
-        <AddNewUser @add="handleAddUser" />
+        <AddNewUser v-if="canAddUser" @add="handleAddUser" />
 
         <UserList
           :users="users"
           :available-roles="availableRoles"
           :loading="loading"
           :pagination="pagination"
+          :can-manage-roles="canManagePermissions"
+          :can-edit-user="canEditUser"
+          :can-delete-user="canDeleteUser"
           @manage-roles="addRolesToUser"
           @edit="editUser"
           @delete="confirmDeleteUser"
@@ -100,10 +103,12 @@ import AddNewUser from 'src/components/Usermanagement/AddNewUser.vue'
 import UserList from 'src/components/Usermanagement/UserList.vue'
 import ManageUserRoles from 'src/components/Usermanagement/ManageUserRoles.vue'
 import { useUserManagementStore } from 'src/stores/usermanagementStore.js'
+import { useAuthStore } from 'src/features/index.js'
 
 const $q = useQuasar()
 const router = useRouter()
 const userStore = useUserManagementStore()
+const authStore = useAuthStore()
 
 const users = computed(() => userStore.users)
 
@@ -132,6 +137,27 @@ const userToDelete = ref(null)
 
 // Loading state
 const loading = computed(() => userStore.loading)
+
+// Permission gating
+const has = (perm) =>
+  authStore.isSuperAdmin ||
+  authStore.permissions.includes('*') ||
+  authStore.permissions.includes(perm)
+computed(
+  () => authStore.can('view', 'userManagement') || has('userManagement:view'),
+)
+const canAddUser = computed(
+  () => authStore.can('create', 'userManagement') || has('userManagement:create'),
+)
+const canEditUser = computed(
+  () => authStore.can('edit', 'userManagement') || has('userManagement:edit'),
+)
+const canDeleteUser = computed(
+  () => authStore.can('delete', 'userManagement') || has('userManagement:delete'),
+)
+const canManagePermissions = computed(
+  () => authStore.can('assign', 'userManagement') || has('userManagement:assign'),
+)
 
 // Available permissions sourced from Sidebar routes
 const availableRoles = computed(() => {
@@ -195,6 +221,9 @@ const handleSaveAddedRoles = async (permissions) => {
   try {
     const uniquePerms = Array.from(new Set(permissions))
     await userStore.updateUser(selectedUser.value.id, { permissions: uniquePerms })
+    if (authStore.user?.uid && (selectedUser.value.uid === authStore.user.uid || selectedUser.value.email === authStore.user.email)) {
+      authStore.setPermissions(uniquePerms)
+    }
     addRolesDialog.value = false
     $q.notify({
       type: 'positive',

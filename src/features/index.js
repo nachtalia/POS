@@ -32,12 +32,21 @@ export const useAuthStore = defineStore('auth', {
         const roleRef = doc(db, 'roles', this.user.role)
         const roleSnap = await getDoc(roleRef)
 
-        if (roleSnap.exists()) {
-          this.permissions = roleSnap.data().permissions || []
-        } else {
-          console.warn(`Role '${this.user.role}' not found in DB.`)
-          this.permissions = []
+        const rolePerms = roleSnap.exists() ? roleSnap.data().permissions || [] : []
+
+        let userPerms = []
+        if (this.user?.email) {
+          const { collection, query, where, limit, getDocs } = await import('firebase/firestore')
+          const q = query(collection(db, 'user'), where('email', '==', this.user.email), limit(1))
+          const snap = await getDocs(q)
+          if (!snap.empty) {
+            const data = snap.docs[0].data()
+            if (Array.isArray(data?.permissions)) userPerms = data.permissions
+          }
         }
+
+        const merged = Array.from(new Set([...(rolePerms || []), ...(userPerms || [])]))
+        this.permissions = merged
       } catch (error) {
         console.error('Error fetching permissions:', error)
       }

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { db } from '../services/firebase'
 import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, Timestamp } from 'firebase/firestore'
 import { Addon } from '../services/models/Addon'
+import { logAudit } from '../services/auditService'
 
 export const useAddonStore = defineStore('addonStore', {
   state: () => ({
@@ -27,6 +28,13 @@ export const useAddonStore = defineStore('addonStore', {
         const ref = await addDoc(collection(db, 'addons'), addon.toFirestore())
         addon.id = ref.id
         this.addons.push(addon)
+        await logAudit({
+          module: 'inventory',
+          action: 'add',
+          entityType: 'addon',
+          entityId: ref.id,
+          details: addon.toFirestore()
+        })
       } catch (e) {
         console.error('Error adding addon:', e)
         throw e
@@ -41,6 +49,13 @@ export const useAddonStore = defineStore('addonStore', {
           const updated = new Addon({ ...this.addons[idx], ...payload, updatedAt: payload.updatedAt })
           this.addons[idx] = updated
         }
+        await logAudit({
+          module: 'inventory',
+          action: 'edit',
+          entityType: 'addon',
+          entityId: id,
+          details: payload
+        })
       } catch (e) {
         console.error('Error updating addon:', e)
         throw e
@@ -50,6 +65,13 @@ export const useAddonStore = defineStore('addonStore', {
       try {
         await deleteDoc(doc(db, 'addons', id))
         this.addons = this.addons.filter(a => a.id !== id)
+        await logAudit({
+          module: 'inventory',
+          action: 'delete',
+          entityType: 'addon',
+          entityId: id,
+          details: null
+        })
       } catch (e) {
         console.error('Error deleting addon:', e)
         throw e

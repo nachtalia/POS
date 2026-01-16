@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { db } from '../services/firebase'
 import { collection, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore'
 import { Category } from '../services/models/Category' 
+import { logAudit } from '../services/auditService'
 
 export const useCategoryStore = defineStore('categoryStore', {
   state: () => ({
@@ -30,6 +31,13 @@ export const useCategoryStore = defineStore('categoryStore', {
 
         newCategory.id = docRef.id
         this.categories.push(newCategory)
+        await logAudit({
+          module: 'inventory',
+          action: 'add',
+          entityType: 'category',
+          entityId: docRef.id,
+          details: newCategory.toFirestore()
+        })
       } catch (error) {
         console.error("Error adding category:", error)
         throw error 
@@ -40,6 +48,13 @@ export const useCategoryStore = defineStore('categoryStore', {
       try {
         await deleteDoc(doc(db, "categories", categoryId))
         this.categories = this.categories.filter(c => c.id !== categoryId)
+        await logAudit({
+          module: 'inventory',
+          action: 'delete',
+          entityType: 'category',
+          entityId: categoryId,
+          details: null
+        })
       } catch (error) {
         console.error("Error deleting category:", error)
         throw error

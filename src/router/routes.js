@@ -62,7 +62,7 @@ const routes = [
           permissions: ['transactions:view'],
         },
       },
-       {
+      {
         path: '/userManagement',
         name: 'UserManagement',
         component: () => import('pages/admin/UserManagement.vue'),
@@ -70,10 +70,22 @@ const routes = [
           isSidebarItem: true,
           isManagement: true,
           label: 'User Management',
-          icon: 'profile_long',
+          icon: 'people',           // Mas angkop para sa user management
           caption: 'Manage User',
-          // Permission required to see this link:
           permissions: ['userManagement:view'],
+        },
+      },
+      {
+        path: '/AuditTrail',
+        name: 'AuditTrail',
+        component: () => import('pages/admin/AuditTrail.vue'),
+        meta: {
+          isSidebarItem: true,
+          isManagement: true,
+          label: 'Audit Trail',
+          icon: 'history',          // Mas angkop para sa audit trail/history
+          caption: 'Audit Trail history',
+          permissions: ['auditTrail:view'],
         },
       },
       {

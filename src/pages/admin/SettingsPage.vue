@@ -135,13 +135,17 @@
                   dense
                   stack-label
                   placeholder="Enter system or shop name"
-                  :rules="[(val) => !!val || 'Required']"
+                  maxlength="30"
+                  counter
+                  :rules="[
+                    (val) => !!val || 'Required',
+                    (val) => /^[a-zA-Z0-9 ]+$/.test(val) || 'Only text and numbers allowed',
+                  ]"
                 >
                   <template v-slot:prepend>
                     <q-icon name="badge" color="primary" size="xs" />
                   </template>
                 </q-input>
-
                 <q-input
                   v-model="form.defaultLogo"
                   label="Asset Path Reference"
