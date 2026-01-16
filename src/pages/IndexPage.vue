@@ -138,7 +138,7 @@
 import { ref, onMounted } from 'vue'
 
 const totalOrders = ref(156)
-const totalRevenue = ref('$24,350')
+const totalRevenue = ref('₱24,350')
 const lowStockItems = ref(12)
 const pendingOrders = ref(8)
 

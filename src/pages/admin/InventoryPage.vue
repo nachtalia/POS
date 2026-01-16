@@ -174,7 +174,7 @@
                           {{ p.productCategory }}
                         </q-chip>
                         <div class="text-weight-bold text-primary">
-                          ${{ Number(p.productPrice || 0).toFixed(2) }}
+                          ₱{{ Number(p.productPrice || 0).toFixed(2) }}
                         </div>
                       </div>
                     </q-card-section>
@@ -577,7 +577,7 @@ const columns = [
     field: 'productPrice',
     align: 'right',
     sortable: true,
-    format: (val) => `$${Number(val).toFixed(2)}`,
+    format: (val) => `₱${Number(val).toFixed(2)}`,
   },
   {
     name: 'cost',
@@ -585,7 +585,7 @@ const columns = [
     field: 'productCost',
     align: 'right',
     sortable: true,
-    format: (val) => `$${Number(val).toFixed(2)}`,
+    format: (val) => `₱${Number(val).toFixed(2)}`,
   },
   // removed stock column
   { name: 'actions', label: 'Actions', field: 'actions', align: 'center' },
@@ -599,7 +599,7 @@ const addonColumns = [
     field: 'price',
     align: 'right',
     sortable: true,
-    format: (v) => `$${Number(v || 0).toFixed(2)}`,
+    format: (v) => `₱${Number(v || 0).toFixed(2)}`,
   },
   { name: 'stock', label: 'Stock', field: 'stock', align: 'center', sortable: true },
   { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
@@ -891,7 +891,7 @@ const exportInventoryPDF = () => {
               <th>Cost</th>
 <<<<<<< HEAD
 =======
-             
+
 >>>>>>> 652618933f7dc5e9c1c0875e6e7f01e21d999180
             </tr>
           </thead>

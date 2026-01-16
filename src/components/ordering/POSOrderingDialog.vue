@@ -160,7 +160,7 @@
                             {{ item.product.productName }}
                           </div>
                           <div class="text-subtitle2 text-primary">
-                            ${{ (item.unitPrice * item.quantity).toFixed(2) }}
+                            ₱{{ (item.unitPrice * item.quantity).toFixed(2) }}
                           </div>
                         </div>
 
@@ -264,7 +264,7 @@
                   {{ activeProduct.description }}
                 </div>
                 <div class="text-h5 text-primary text-weight-bolder q-mt-xs">
-                  ${{ customizedPrice.toFixed(2) }}
+                  ₱{{ customizedPrice.toFixed(2) }}
                 </div>
               </div>
               <q-btn icon="close" flat round color="grey-7" v-close-popup />
@@ -293,7 +293,7 @@
                     <div class="column items-center">
                       <span>{{ size.label }}</span>
                       <span class="text-xs opacity-80" v-if="size.price > 0"
-                        >+${{ size.price }}</span
+                        >+₱{{ size.price }}</span
                       >
                     </div>
                   </q-btn>
@@ -319,7 +319,7 @@
                           addon.name || addon.label
                         }}</q-item-label>
                         <q-item-label caption class="text-primary"
-                          >+${{ Number(addon.price || 0).toFixed(2) }}</q-item-label
+                          >+₱{{ Number(addon.price || 0).toFixed(2) }}</q-item-label
                         >
                       </q-item-section>
                     </q-item>
@@ -375,7 +375,7 @@
               >
                 <div class="row items-center justify-between full-width">
                   <span>Add to Order</span>
-                  <span>${{ (customizedPrice * customizationForm.quantity).toFixed(2) }}</span>
+                  <span>₱{{ (customizedPrice * customizationForm.quantity).toFixed(2) }}</span>
                 </div>
               </q-btn>
             </q-card-actions>
@@ -526,7 +526,7 @@ const confirmAddToCart = () => {
   cart.value.push(cartItem)
   $q.notify({
     message: `${activeProduct.value.productName} added`,
-    caption: `+ $${(cartItem.unitPrice * cartItem.quantity).toFixed(2)}`,
+    caption: `+ ₱${(cartItem.unitPrice * cartItem.quantity).toFixed(2)}`,
     color: 'positive',
     icon: 'add_shopping_cart',
     position: 'top-right',
@@ -584,10 +584,6 @@ const saveAsDraft = () => {
 }
 
 const submitOrder = async (summaryData) => {
-  if (!customer.value.name) {
-    $q.notify({ type: 'warning', message: 'Please enter customer name' })
-    return
-  }
   const orderData = {
     customer: customer.value,
     customerName: customer.value.name || '',

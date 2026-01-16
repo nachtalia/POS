@@ -155,7 +155,7 @@
           size="lg"
           @click="handlePayNow"
           :loading="loading"
-          :disable="cartLength === 0 || !customerName"
+          :disable="cartLength === 0"
         >
           <q-icon name="payments" class="q-mr-sm" />
           Pay Now

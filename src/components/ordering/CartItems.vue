@@ -44,10 +44,10 @@
 
               <q-item-label>
                 <span class="text-subtitle2 text-primary text-weight-bold">
-                  ${{ ((item.product?.productPrice || 0) * item.quantity).toFixed(2) }}
+                  ₱{{ ((item.product?.productPrice || 0) * item.quantity).toFixed(2) }}
                 </span>
                 <span class="text-caption text-grey-6 q-ml-sm">
-                  (${{ (item.product?.productPrice || 0).toFixed(2) }} ea)
+                  (₱{{ (item.product?.productPrice || 0).toFixed(2) }} ea)
                 </span>
               </q-item-label>
             </q-item-section>

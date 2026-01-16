@@ -26,9 +26,9 @@
       </q-img>
       <div class="absolute-bottom text-white text-center q-pa-xs bg-dark-overlay">
         <div class="text-subtitle2 text-weight-bold">
-          ${{ product.price.toFixed(2) }}
+          ₱{{ product.price.toFixed(2) }}
           <span v-if="product.originalPrice" class="text-caption text-strike q-ml-xs">
-            ${{ product.originalPrice.toFixed(2) }}
+            ₱{{ product.originalPrice.toFixed(2) }}
           </span>
         </div>
       </div>
