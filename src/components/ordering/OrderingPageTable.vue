@@ -83,7 +83,10 @@
                 </q-td>
 
                 <q-td key="customerName" :props="props">
-                  {{ props.row.customerName || (props.row.customer ? props.row.customer.name : 'Walk-in Customer') }}
+                  {{
+                    props.row.customerName ||
+                    (props.row.customer ? props.row.customer.name : 'Walk-in Customer')
+                  }}
                 </q-td>
 
                 <q-td key="date" :props="props">
@@ -145,10 +148,12 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { db } from 'src/services/firebase'
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore'
 
+// Components
 import POSOrderDialog from 'src/components/ordering/POSOrderingDialog.vue'
 import ReceiptDialog from 'src/components/ordering/ReceiptDialog.vue'
 import { useAuthStore } from 'src/features/index.js'
 
+// State
 const orders = ref([])
 const products = ref([])
 const loading = ref(true)
@@ -160,13 +165,14 @@ const showReceiptDialog = ref(false)
 const selectedOrder = ref(null)
 const statusOptions = ['All', 'Pending', 'Paid', 'Shipped', 'Cancelled']
 const authStore = useAuthStore()
+
+// Permissions Helper
 const has = (perm) =>
   authStore.isSuperAdmin ||
   authStore.permissions.includes('*') ||
   authStore.permissions.includes(perm)
-const canCreateOrder = computed(
-  () => authStore.can('create', 'ordering') || has('ordering:create'),
-)
+
+const canCreateOrder = computed(() => authStore.can('create', 'ordering') || has('ordering:create'))
 
 let unsubscribeOrders = null
 let unsubscribeProducts = null
@@ -193,7 +199,7 @@ const columns = [
     label: 'Date',
     field: (row) => row.createdAt || row.date,
     align: 'left',
-    sortable: true
+    sortable: true,
   },
   { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
   { name: 'total', label: 'Total Amount', field: 'total', align: 'right', sortable: true },
@@ -201,6 +207,7 @@ const columns = [
 ]
 
 onMounted(() => {
+  // 1. Existing Firebase Listeners
   const ordersQuery = query(collection(db, 'orders'), orderBy('createdAt', 'desc'))
 
   unsubscribeOrders = onSnapshot(
@@ -226,6 +233,13 @@ onMounted(() => {
       ...doc.data(),
     }))
   })
+
+  // 2. AUTOMATICALLY OPEN POS FOR CASHIERS
+  const userRole = authStore.user?.role?.toLowerCase() || ''
+
+  if (userRole === 'cashier') {
+    showPOSDialog.value = true
+  }
 })
 
 onUnmounted(() => {

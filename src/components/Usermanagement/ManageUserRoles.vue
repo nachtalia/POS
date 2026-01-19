@@ -24,13 +24,40 @@
 
         <div class="q-mb-md">
           <div class="text-subtitle2 text-weight-medium text-blue-grey-9 q-mb-xs">
-            Current Permissions
+            Quick Role Assignment
+          </div>
+          <q-select
+            outlined
+            dense
+            v-model="selectedRole"
+            :options="userRoles"
+            label="Select User Role"
+            emit-value
+            map-options
+            @update:model-value="applyRole"
+            color="primary"
+            bg-color="white"
+          >
+            <template v-slot:prepend>
+              <q-icon name="badge" />
+            </template>
+          </q-select>
+          <div class="text-caption text-grey-7 q-mt-xs">
+            Selecting a role will automatically check the required permissions below.
+          </div>
+        </div>
+
+        <q-separator spaced />
+
+        <div class="q-mb-md">
+          <div class="text-subtitle2 text-weight-medium text-blue-grey-9 q-mb-xs">
+            Active Permissions
             <q-badge color="grey" class="q-ml-xs" :label="selectedPermissions.length" />
           </div>
           <div class="q-gutter-xs">
-            <q-chip 
-              v-for="perm in selectedPermissions" 
-              :key="perm" 
+            <q-chip
+              v-for="perm in selectedPermissions"
+              :key="perm"
               color="primary"
               text-color="white"
               dense
@@ -49,12 +76,26 @@
 
         <div class="q-mb-md">
           <div class="text-subtitle2 text-weight-medium text-blue-grey-9 q-mb-xs">
-            Available Permissions
+            Customize Permissions
           </div>
 
           <div class="row q-col-gutter-xs q-mb-md">
-            <q-btn outline size="sm" color="primary" label="Select All" @click="selectAllPermissions" class="col" />
-            <q-btn outline size="sm" color="grey" label="Clear All" @click="clearAllPermissions" class="col" />
+            <q-btn
+              outline
+              size="sm"
+              color="primary"
+              label="Select All"
+              @click="selectAllPermissions"
+              class="col"
+            />
+            <q-btn
+              outline
+              size="sm"
+              color="grey"
+              label="Clear All"
+              @click="clearAllPermissions"
+              class="col"
+            />
           </div>
 
           <q-list bordered class="rounded-borders">
@@ -65,14 +106,11 @@
               :caption="getRoleDescription(page.value)"
               expand-separator
               :default-opened="false"
+              header-class="bg-grey-1"
             >
               <q-item v-for="action in actionsByPage[page.value] || []" :key="action.value">
                 <q-item-section avatar>
-                  <q-checkbox
-                    v-model="selectedPermissions"
-                    :val="action.value"
-                    color="primary"
-                  />
+                  <q-checkbox v-model="selectedPermissions" :val="action.value" color="primary" />
                 </q-item-section>
                 <q-item-section>
                   <q-item-label class="text-weight-medium">{{ action.label }}</q-item-label>
@@ -82,21 +120,14 @@
             </q-expansion-item>
           </q-list>
         </div>
-
-        <q-banner v-if="selectedPermissions.length > 0" dense class="bg-green-1 text-green-9 q-mb-md">
-          <template v-slot:avatar>
-            <q-icon name="check_circle" color="green" />
-          </template>
-          {{ selectedPermissions.length }} permission(s) selected
-        </q-banner>
       </q-card-section>
 
       <q-separator />
 
       <q-card-actions align="right" class="q-pa-md">
         <q-btn flat label="Cancel" color="grey" v-close-popup class="q-px-lg" />
-        <q-btn 
-          label="Apply Permissions" 
+        <q-btn
+          label="Apply Permissions"
           color="green"
           @click="save"
           :disable="!selectedPermissions.length"
@@ -114,6 +145,7 @@ import { ref, watch, computed } from 'vue'
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   selectedUser: { type: Object, default: () => null },
+  // This prop provides the categories (Dashboard, Inventory, etc.)
   availableRoles: { type: Array, default: () => [] },
 })
 
@@ -121,13 +153,24 @@ const emit = defineEmits(['update:modelValue', 'save'])
 
 const localDialog = ref(props.modelValue)
 const selectedPermissions = ref([])
+const selectedRole = ref(null) // New ref for the select dropdown
 
-const pages = computed(() => (props.availableRoles || []))
+const pages = computed(() => props.availableRoles || [])
+
+// --- 1. DEFINED USER ROLES ---
+const userRoles = [
+  { label: 'Administrator', value: 'admin', description: 'Full access to all modules' },
+  {
+    label: 'Store Manager',
+    value: 'manager',
+    description: 'Access to everything except user management',
+  },
+  { label: 'Cashier', value: 'cashier', description: 'Access to Ordering and Transactions only' },
+  { label: 'Inventory Clerk', value: 'clerk', description: 'Access to Inventory only' },
+]
 
 const actionsByPage = {
-  Dashboard: [
-    { label: 'View Dashboard', value: 'dashboard:view' },
-  ],
+  Dashboard: [{ label: 'View Dashboard', value: 'dashboard:view' }],
   Inventory: [
     { label: 'View Inventory', value: 'inventory:view' },
     { label: 'Add Category', value: 'inventory:addCategory' },
@@ -159,23 +202,76 @@ const actionsByPage = {
   ],
 }
 
-watch(() => props.modelValue, (val) => {
-  localDialog.value = val
-})
+// --- 2. LOGIC TO APPLY ROLES ---
+const applyRole = (role) => {
+  let permissionsToAdd = []
+
+  switch (role) {
+    case 'admin':
+      // Admin gets everything
+      Object.values(actionsByPage).forEach((group) => {
+        group.forEach((action) => permissionsToAdd.push(action.value))
+      })
+      break
+
+    case 'manager':
+      // Manager gets everything EXCEPT UserManagement
+      Object.keys(actionsByPage).forEach((key) => {
+        if (key !== 'UserManagement') {
+          actionsByPage[key].forEach((action) => permissionsToAdd.push(action.value))
+        }
+      })
+      break
+
+    case 'cashier':
+      // Cashier gets Ordering AND Transactions (often needed for refunds or checking history)
+      if (actionsByPage.Ordering) {
+        actionsByPage.Ordering.forEach((action) => permissionsToAdd.push(action.value))
+      }
+      if (actionsByPage.Transactions) {
+        // Maybe Cashier can View transactions but NOT Refund?
+        // Let's filter specifically:
+        const viewTrans = actionsByPage.Transactions.find((a) => a.value === 'transactions:view')
+        if (viewTrans) permissionsToAdd.push(viewTrans.value)
+      }
+      break
+
+    case 'clerk':
+      // Inventory Clerk gets only Inventory
+      if (actionsByPage.Inventory) {
+        actionsByPage.Inventory.forEach((action) => permissionsToAdd.push(action.value))
+      }
+      break
+  }
+
+  // Update the checked boxes
+  selectedPermissions.value = permissionsToAdd
+}
+
+watch(
+  () => props.modelValue,
+  (val) => {
+    localDialog.value = val
+  },
+)
 
 watch(localDialog, (val) => {
   emit('update:modelValue', val)
 })
 
-watch(() => props.selectedUser, (user) => {
-  const legacyMap = {
-    'addons:add-addons': 'addons:add',
-  }
-  const incoming = Array.isArray(user?.permissions) ? user.permissions : []
-  selectedPermissions.value = Array.from(
-    new Set(incoming.map((p) => legacyMap[p] || p)),
-  )
-}, { immediate: true })
+watch(
+  () => props.selectedUser,
+  (user) => {
+    selectedRole.value = null // Reset role selector when user changes
+
+    const legacyMap = {
+      'addons:add-addons': 'addons:add',
+    }
+    const incoming = Array.isArray(user?.permissions) ? user.permissions : []
+    selectedPermissions.value = Array.from(new Set(incoming.map((p) => legacyMap[p] || p)))
+  },
+  { immediate: true },
+)
 
 const selectAllPermissions = () => {
   const all = []
@@ -184,10 +280,12 @@ const selectAllPermissions = () => {
     actions.forEach((a) => all.push(a.value))
   })
   selectedPermissions.value = all
+  selectedRole.value = null // Clear role selection as it's now custom
 }
 
 const clearAllPermissions = () => {
   selectedPermissions.value = []
+  selectedRole.value = null
 }
 
 const removePermission = (perm) => {
@@ -195,6 +293,7 @@ const removePermission = (perm) => {
   if (index !== -1) {
     selectedPermissions.value.splice(index, 1)
   }
+  selectedRole.value = null // Clear role as user manually modified it
 }
 
 const save = () => {

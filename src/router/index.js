@@ -6,29 +6,7 @@ import {
   createWebHashHistory,
 } from 'vue-router'
 import routes from './routes'
-
-// 1. Import your Store and Firebase
-import { useAuthStore } from 'src/features/index.js'
-import { auth, db } from 'src/services/firebase'
-import { onAuthStateChanged } from 'firebase/auth'
-import { Notify } from 'quasar'
-
-/*
- * HELPER: Wait for Firebase Auth to Initialize
- * This prevents the user from being kicked to login on page refresh (F5)
- */
-function getCurrentUser() {
-  return new Promise((resolve, reject) => {
-    const unsubscribe = onAuthStateChanged(
-      auth,
-      (user) => {
-        unsubscribe()
-        resolve(user)
-      },
-      reject,
-    )
-  })
-}
+import { useAuthStore } from 'src/features/index' // Ensure path is correct
 
 export default route(function (/* { store, ssrContext } */) {
   const createHistory = process.env.SERVER
@@ -44,104 +22,56 @@ export default route(function (/* { store, ssrContext } */) {
   })
 
   // --- NAVIGATION GUARD ---
-  Router.beforeEach(async (to, from, next) => {
+  Router.beforeEach((to, from, next) => {
     const authStore = useAuthStore()
-    const requiresAuth = to.matched.some(
-      (record) => record.meta.isSidebarItem || record.meta.permissions,
-    )
-    const requiresGuest = to.path === '/' // Login page
 
-    // 1. CHECK AUTH STATE (Handle Refresh)
-    // If the store is empty, check if Firebase remembers the user
-    if (!authStore.user) {
-      const firebaseUser = await getCurrentUser()
+    // 1. Check if the route requires authentication (checked parent meta too)
+    const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
 
-      if (firebaseUser) {
-        // User is logged in via Firebase, but Store is empty (Refresh happened)
-        // We need to fetch the Role from Firestore again to populate the store
-        try {
-          const { collection, query, where, limit, getDocs } = await import('firebase/firestore')
-          const q = query(collection(db, 'user'), where('email', '==', firebaseUser.email), limit(1))
-          const snap = await getDocs(q)
+    // 2. Check if user is logged in
+    const isAuthenticated = !!authStore.user // Or authStore.isAuthenticated if you have that getter
 
-          if (!snap.empty) {
-            const userData = snap.docs[0].data()
-
-            // Repopulate Store
-            authStore.setUser({
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              role: userData.role || 'staff',
-              username: userData.username || 'User',
-            })
-
-            // Wait for permissions to be fetched (setUser triggers fetchPermissions)
-            // But we add a small delay or check to ensure permissions are ready
-            // (Store action is async, so better to explicitly await fetchPermissions if possible)
-                await authStore.fetchPermissions()
-                const existing = Array.isArray(authStore.permissions) ? authStore.permissions : []
-                const userPerms = Array.isArray(userData.permissions) ? userData.permissions : []
-                const merged = Array.from(new Set([...(existing || []), ...(userPerms || [])]))
-                authStore.setPermissions(merged)
-          }
-        } catch (error) {
-          console.error('Error restoring session:', error)
-        }
-      }
-    }
-
-    const isAuthenticated = !!authStore.user
-
-    // 2. ROUTE LOGIC
-
-    // A. If going to Login page but already logged in -> Redirect to Dashboard
-    if (requiresGuest && isAuthenticated) {
-      return next('/dashboard')
-    }
-
-    // B. If going to Protected page but NOT logged in -> Redirect to Login
+    // SCENARIO 1: Accessing Protected Route && NOT Logged In
     if (requiresAuth && !isAuthenticated) {
-      return next('/')
-    }
-
-    // C. PERMISSION CHECK
-    if (to.meta.permissions) {
-      // 1. Check if Super Admin (Bypass)
-      if (authStore.isSuperAdmin) {
-        return next()
-      }
-
-      // 2. Allow if user has the exact permission OR any permission with the same resource prefix
-      const userPermsLower = (authStore.permissions || []).map((p) => String(p).toLowerCase())
-      const hasPermission = to.meta.permissions.some((perm) => {
-        const permLower = String(perm).toLowerCase()
-        if (userPermsLower.includes(permLower)) return true
-        const resource = permLower.split(':')[0]
-        return userPermsLower.some((p) => p.startsWith(resource + ':'))
-      })
-
-      if (hasPermission) {
-        return next()
+      // Prevent infinite loop: Only redirect if we are NOT already at login
+      if (to.name !== 'login') {
+        next({ name: 'login' })
       } else {
-        // PERMISSION DENIED
-        // Warning: Do not redirect to the same page (Infinite loop)
-        Notify.create({
-          type: 'negative',
-          message: 'You do not have permission to view this page.',
-        })
-
-        // If coming from somewhere else, abort navigation
-        if (from.path !== '/') {
-          return next(false)
-        } else {
-          // If typed directly into browser, send to Dashboard
-          return next('/dashboard')
-        }
+        next() // We are at login, let it show
       }
     }
+    // SCENARIO 2: Accessing Login Page && ALREADY Logged In
+    else if (to.name === 'login' && isAuthenticated) {
+      next({ name: 'Dashboard' }) // Redirect to main dashboard
+    }
+    // SCENARIO 3: Accessing Protected Route && Logged In (Check Permissions)
+    else if (requiresAuth && isAuthenticated) {
+      // Check if route has specific permissions
+      const requiredPermissions = to.meta.permissions
 
-    // Default: Allow navigation
-    next()
+      if (requiredPermissions) {
+        // Simple permission check (User has at least one of the required perms)
+        const userPerms = authStore.permissions || []
+        const hasPermission =
+          authStore.isSuperAdmin ||
+          userPerms.includes('*') ||
+          requiredPermissions.some((p) => userPerms.includes(p))
+
+        if (hasPermission) {
+          next()
+        } else {
+          // User logged in but no permission for this specific page
+          next({ path: '/error-403' }) // Or just next(false) to stay put
+        }
+      } else {
+        // No specific permissions required, just auth
+        next()
+      }
+    }
+    // SCENARIO 4: Public Pages (404, etc)
+    else {
+      next()
+    }
   })
 
   return Router

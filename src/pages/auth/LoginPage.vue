@@ -87,7 +87,7 @@ import { useQuasar } from 'quasar'
 
 // 1. Import Stores
 import { useSystemSettingsStore } from 'src/stores/systemSettingsStore'
-import { useAuthStore } from 'src/features/index.js' // Ensure path is correct!
+import { useAuthStore } from 'src/features/index.js'
 
 // 2. Firebase Imports
 import { signInWithEmailAndPassword } from 'firebase/auth'
@@ -97,7 +97,7 @@ import { auth, db } from 'src/services/firebase'
 const router = useRouter()
 const $q = useQuasar()
 const systemStore = useSystemSettingsStore()
-const authStore = useAuthStore() // Initialize Auth Store
+const authStore = useAuthStore()
 
 const identifier = ref('')
 const password = ref('')
@@ -174,22 +174,20 @@ const onLoginSubmit = async () => {
     console.log('Firebase Auth successful:', user.uid)
 
     // 4. Fetch User Role/Profile from Firestore
-    // Using email because your UID and Doc ID might not match
     const roleQuery = query(collection(db, 'user'), where('email', '==', user.email), limit(1))
     const roleSnap = await getDocs(roleQuery)
 
     let userRole = 'staff'
     let currentUsername = 'User'
+    let userPermissions = []
 
     if (!roleSnap.empty) {
       const userData = roleSnap.docs[0].data()
       userRole = userData.role || 'staff'
       currentUsername = userData.username || 'User'
+      userPermissions = userData.permissions || []
 
-      // --- CRITICAL FIX START ---
-      // We must Populate the Pinia Store BEFORE redirecting
-      // The Router Guard reads 'authStore.user' and 'authStore.permissions'
-
+      // --- POPULATE STORE ---
       authStore.setUser({
         uid: user.uid,
         email: user.email,
@@ -197,15 +195,14 @@ const onLoginSubmit = async () => {
         username: currentUsername,
       })
 
-      if (Array.isArray(userData.permissions) && userData.permissions.length > 0) {
-        authStore.setPermissions(userData.permissions)
+      if (userPermissions.length > 0) {
+        authStore.setPermissions(userPermissions)
       } else {
         await authStore.fetchPermissions()
+        userPermissions = authStore.permissions
       }
-      // --- CRITICAL FIX END ---
     } else {
-      console.warn('User logged in, but no profile found in "user" collection.')
-      // Still set minimal user data so they don't get stuck in loop
+      // Fallback
       authStore.setUser({
         uid: user.uid,
         email: user.email,
@@ -222,26 +219,24 @@ const onLoginSubmit = async () => {
       position: 'top',
     })
 
-    // 6. Redirect Logic
-    const normalizedRole = userRole.toLowerCase()
-
-    if (normalizedRole === 'admin' || normalizedRole === 'superadmin') {
-      router.push('/ordering')
+    // 6. REDIRECT LOGIC
+    if (userRole === 'admin' || userPermissions.includes('dashboard:view')) {
+      router.push({ name: 'Dashboard' })
+    } else if (userPermissions.includes('ordering:view')) {
+      router.push({ name: 'Ordering' })
+    } else if (userPermissions.includes('inventory:view')) {
+      router.push({ name: 'Inventory' })
     } else {
-      router.push('/dashboard')
+      router.push({ name: 'Settings' })
     }
   } catch (error) {
     console.error('Login Error:', error.code || error)
 
     let msg = 'Login failed. Please try again.'
-    // Map Firebase errors
     if (error.code === 'auth/invalid-credential') msg = 'Invalid email or password.'
     if (error.code === 'auth/user-not-found') msg = 'Account not found.'
     if (error.code === 'auth/wrong-password') msg = 'Incorrect password.'
-    if (error.code === 'auth/too-many-requests') msg = 'Too many attempts. Account locked.'
-    if (error.code === 'auth/invalid-email') msg = 'Invalid email format.'
     if (error.code === 'custom/username-not-found') msg = 'Username not found.'
-    if (error.code === 'custom/invalid-user-record') msg = 'User record is corrupted.'
 
     $q.notify({
       color: 'negative',

@@ -2,11 +2,18 @@ const routes = [
   {
     path: '/',
     component: () => import('layouts/IndexLayout.vue'),
-    children: [{ path: '', component: () => import('pages/auth/LoginPage.vue') }],
+    children: [
+      {
+        path: '',
+        name: 'login', // <--- IMPORTANT: Added Name
+        component: () => import('pages/auth/LoginPage.vue'),
+      },
+    ],
   },
   {
     path: '/dashboard',
     component: () => import('layouts/MainLayout.vue'),
+    meta: { requiresAuth: true }, // <--- IMPORTANT: Protects all children
     children: [
       {
         path: '',
@@ -16,7 +23,6 @@ const routes = [
           isSidebarItem: true,
           label: 'Dashboard',
           icon: 'dashboard',
-          // Permission required to see this link:
           permissions: ['dashboard:view'],
         },
       },
@@ -26,11 +32,9 @@ const routes = [
         component: () => import('pages/admin/InventoryPage.vue'),
         meta: {
           isSidebarItem: true,
-          isManagement: true,
           label: 'Inventory',
           icon: 'inventory',
           caption: 'Manage products and stock',
-          // Permission required to see this link:
           permissions: ['inventory:view'],
         },
       },
@@ -40,11 +44,9 @@ const routes = [
         component: () => import('pages/admin/OrderingPage.vue'),
         meta: {
           isSidebarItem: true,
-          isManagement: true,
           label: 'Ordering',
           icon: 'shopping_cart',
           caption: 'Process customer orders',
-          // Permission required to see this link:
           permissions: ['ordering:view'],
         },
       },
@@ -54,11 +56,9 @@ const routes = [
         component: () => import('pages/admin/TransactionsPage.vue'),
         meta: {
           isSidebarItem: true,
-          isManagement: true,
           label: 'Transactions',
           icon: 'receipt_long',
           caption: 'Transaction history',
-          // Permission required to see this link:
           permissions: ['transactions:view'],
         },
       },
@@ -68,9 +68,8 @@ const routes = [
         component: () => import('pages/admin/UserManagement.vue'),
         meta: {
           isSidebarItem: true,
-          isManagement: true,
           label: 'User Management',
-          icon: 'people',           // Mas angkop para sa user management
+          icon: 'people',
           caption: 'Manage User',
           permissions: ['userManagement:view'],
         },
@@ -81,9 +80,8 @@ const routes = [
         component: () => import('pages/admin/AuditTrail.vue'),
         meta: {
           isSidebarItem: true,
-          isManagement: true,
           label: 'Audit Trail',
-          icon: 'history',          // Mas angkop para sa audit trail/history
+          icon: 'history',
           caption: 'Audit Trail history',
           permissions: ['auditTrail:view'],
         },
@@ -94,11 +92,9 @@ const routes = [
         component: () => import('pages/admin/SettingsPage.vue'),
         meta: {
           isSidebarItem: true,
-          isManagement: true,
           label: 'Settings',
           icon: 'settings',
           caption: 'System settings',
-          // Permission required to see this link:
           permissions: ['settings:view'],
         },
       },
