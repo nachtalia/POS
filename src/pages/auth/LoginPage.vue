@@ -224,11 +224,19 @@ const onLoginSubmit = async () => {
     })
 
     // 7. Redirect
+    // --- Updated Redirect Logic in LoginPage.vue ---
+
     if (['admin', 'superadmin'].includes(userRole)) {
       router.push({ name: 'Dashboard' })
     } else if (userPermissions.includes('ordering:view')) {
-      router.push({ name: 'Ordering' })
+      router.push({ name: 'POS' })
+    } else if (userPermissions.includes('inventory:view')) {
+      // If they are an inventory clerk, send them straight to Inventory
+      router.push({ name: 'Inventory' })
+    } else if (userPermissions.includes('transactions:view')) {
+      router.push({ name: 'Transactions' })
     } else {
+      // Fallback for users with minimal access
       router.push({ name: 'Dashboard' })
     }
   } catch (error) {

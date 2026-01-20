@@ -1,4 +1,5 @@
 const routes = [
+  // 1. PUBLIC / LOGIN
   {
     path: '/',
     component: () => import('layouts/IndexLayout.vue'),
@@ -10,6 +11,8 @@ const routes = [
       },
     ],
   },
+
+  // 2. ADMIN DASHBOARD (With Sidebar & Header)
   {
     path: '/dashboard',
     component: () => import('layouts/MainLayout.vue'),
@@ -38,18 +41,22 @@ const routes = [
           permissions: ['inventory:view'],
         },
       },
+
+      // --- MODIFIED: ORDER MANAGEMENT (History List) ---
       {
-        path: '/ordering',
-        name: 'Ordering',
-        component: () => import('pages/admin/OrderingPage.vue'),
+        path: '/ordering', // Changed path to be distinct
+        name: 'OrderManagement', // Renamed from 'Ordering'
+        // Points to the file you renamed to OrderManagementPage.vue
+        component: () => import('pages/admin/OrderManagementPage.vue'),
         meta: {
           isSidebarItem: true,
-          label: 'Ordering',
-          icon: 'shopping_cart',
-          caption: 'Process customer orders',
+          label: 'Order Management',
+          icon: 'list_alt', // Changed icon to represent a list/history
+          caption: 'View and track past orders',
           permissions: ['ordering:view'],
         },
       },
+
       {
         path: '/transactions',
         name: 'Transactions',
@@ -62,7 +69,6 @@ const routes = [
           permissions: ['transactions:view'],
         },
       },
-      // --- USER MANAGEMENT ROUTE ---
       {
         path: '/userManagement',
         name: 'UserManagement',
@@ -107,6 +113,23 @@ const routes = [
     ],
   },
 
+  // 3. NEW: POS TERMINAL ROUTE (Full Screen, No Sidebar)
+  {
+    path: '/pos',
+    // Uses BlankLayout so the Admin Sidebar/Header does not appear
+    component: () => import('layouts/BlankLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'POS', // This matches router.push({ name: 'POS' }) or path '/pos'
+        // Points to the NEW wrapper page we created
+        component: () => import('pages/admin/POSTerminalPage.vue'),
+        meta: { requiresAuth: true },
+      },
+    ],
+  },
+
+  // 4. CATCH ALL (404)
   {
     path: '/:catchAll(.*)*',
     component: () => import('pages/ErrorNotFound.vue'),

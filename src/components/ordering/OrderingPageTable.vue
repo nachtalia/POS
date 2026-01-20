@@ -11,12 +11,12 @@
 
             <q-btn
               color="primary"
-              icon="add_shopping_cart"
-              label="New POS Order"
+              icon="point_of_sale"
+              label="Open POS Terminal"
               unelevated
               no-caps
-              class="q-px-md"
-              @click="showPOSDialog = true"
+              class="q-px-md shadow-2"
+              @click="goToPOS"
               v-if="canCreateOrder"
             />
           </div>
@@ -75,23 +75,15 @@
             </template>
 
             <template v-slot:body="props">
-              <q-tr :props="props">
+              <q-tr :props="props" class="cursor-pointer hover-bg" @click="openReceipt(props.row)">
                 <q-td key="id" :props="props">
-                  <div class="column cursor-pointer" @click="openReceipt(props.row)">
-                    <span class="text-weight-bold text-primary font-mono">
-                      {{ props.row.orderNumber || props.row.id.substring(0, 8) + '...' }}
-                    </span>
-                    <q-tooltip v-if="props.row.orderNumber">
-                      Internal ID: {{ props.row.id }}
-                    </q-tooltip>
-                  </div>
+                  <span class="text-weight-bold text-primary font-mono">
+                    {{ props.row.orderNumber || props.row.id.substring(0, 8) + '...' }}
+                  </span>
                 </q-td>
 
                 <q-td key="customerName" :props="props">
-                  {{
-                    props.row.customerName ||
-                    (props.row.customer ? props.row.customer.name : 'Walk-in Customer')
-                  }}
+                  {{ props.row.customerName || props.row.customer?.name || 'Walk-in Customer' }}
                 </q-td>
 
                 <q-td key="date" :props="props">
@@ -102,7 +94,7 @@
                   <q-badge
                     :color="getStatusColor(props.row.status)"
                     rounded
-                    class="q-px-sm q-py-xs shadow-1"
+                    class="q-px-sm q-py-xs"
                   >
                     {{ props.row.status }}
                   </q-badge>
@@ -113,19 +105,17 @@
                 </q-td>
 
                 <q-td key="actions" :props="props">
-                  <div class="row justify-center q-gutter-x-sm">
-                    <q-btn
-                      flat
-                      round
-                      dense
-                      size="sm"
-                      color="grey-7"
-                      icon="visibility"
-                      @click="openReceipt(props.row)"
-                    >
-                      <q-tooltip>View Receipt</q-tooltip>
-                    </q-btn>
-                  </div>
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    size="sm"
+                    color="grey-7"
+                    icon="visibility"
+                    @click.stop="openReceipt(props.row)"
+                  >
+                    <q-tooltip>View Receipt</q-tooltip>
+                  </q-btn>
                 </q-td>
               </q-tr>
             </template>
@@ -134,7 +124,7 @@
               <div class="full-width row flex-center q-pa-lg text-grey-6">
                 <div class="column items-center">
                   <q-icon name="assignment_late" size="48px" class="q-mb-sm text-grey-4" />
-                  <div>No orders found matching your criteria.</div>
+                  <div>No orders found.</div>
                 </div>
               </div>
             </template>
@@ -142,7 +132,6 @@
         </q-card>
       </div>
 
-      <POSOrderDialog v-model="showPOSDialog" :products="products" />
       <ReceiptDialog v-model="showReceiptDialog" :order="selectedOrder" />
     </div>
   </div>
@@ -150,84 +139,47 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router' // Import Router
 import { db } from 'src/services/firebase'
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore'
+import { useAuthStore } from 'src/features/index.js'
 
 // Components
-import POSOrderDialog from 'src/components/ordering/POSOrderingDialog.vue'
 import ReceiptDialog from 'src/components/ordering/ReceiptDialog.vue'
-import { useAuthStore } from 'src/features/index.js'
+
+const router = useRouter()
+const authStore = useAuthStore()
 
 // State
 const orders = ref([])
-const products = ref([])
 const loading = ref(true)
-
 const searchQuery = ref('')
 const statusFilter = ref('All')
-const showPOSDialog = ref(false)
 const showReceiptDialog = ref(false)
 const selectedOrder = ref(null)
-const statusOptions = ['All', 'Pending', 'Paid', 'Shipped', 'Cancelled']
-const authStore = useAuthStore()
+const statusOptions = ['All', 'Paid', 'Pending', 'Void', 'Cancelled']
+let unsubscribeOrders = null
 
-// Permissions Helper
+// Permissions
 const has = (perm) =>
   authStore.isSuperAdmin ||
   authStore.permissions.includes('*') ||
   authStore.permissions.includes(perm)
-
 const canCreateOrder = computed(() => authStore.can('create', 'ordering') || has('ordering:create'))
 
-let unsubscribeOrders = null
-let unsubscribeProducts = null
+// --- Navigation Logic ---
+const goToPOS = () => {
+  // Navigate to the separate POS page
+  router.push({ name: 'POS' })
+}
 
-// 2. UPDATED: Column Definitions
-const columns = [
-  {
-    name: 'id',
-    label: 'Order #', // Renamed label
-    // Field prioritizes orderNumber, falls back to ID
-    field: (row) => row.orderNumber || row.id,
-    align: 'left',
-    sortable: true,
-    style: 'width: 150px', // Give it a bit more space
-  },
-  {
-    name: 'customerName',
-    label: 'Customer',
-    align: 'left',
-    sortable: true,
-    field: (row) => {
-      if (row.customer && typeof row.customer === 'object' && row.customer.name) {
-        return row.customer.name
-      }
-      if (row.customerName) {
-        return row.customerName
-      }
-      return 'Walk-in Customer'
-    },
-  },
-  {
-    name: 'date',
-    label: 'Date',
-    field: (row) => row.createdAt || row.date,
-    align: 'left',
-    sortable: true,
-  },
-  { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
-  { name: 'total', label: 'Total Amount', field: 'total', align: 'right', sortable: true },
-  { name: 'actions', label: '', field: 'actions', align: 'center', style: 'width: 100px' },
-]
-
+// --- Data Loading ---
 onMounted(() => {
-  // 1. Existing Firebase Listeners
   const ordersQuery = query(collection(db, 'orders'), orderBy('createdAt', 'desc'))
 
   unsubscribeOrders = onSnapshot(
     ordersQuery,
     (snapshot) => {
-      // The store saves orderNumber, so ...doc.data() will include it
       orders.value = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
@@ -235,105 +187,88 @@ onMounted(() => {
       loading.value = false
     },
     (err) => {
-      console.error(err)
+      console.error('Error fetching orders:', err)
       loading.value = false
     },
   )
-
-  const productsQuery = query(collection(db, 'products'))
-
-  unsubscribeProducts = onSnapshot(productsQuery, (snapshot) => {
-    products.value = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }))
-  })
-
-  // 2. AUTOMATICALLY OPEN POS FOR CASHIERS
-  const userRole = authStore.user?.role?.toLowerCase() || ''
-
-  if (userRole === 'cashier') {
-    showPOSDialog.value = true
-  }
 })
 
 onUnmounted(() => {
   if (unsubscribeOrders) unsubscribeOrders()
-  if (unsubscribeProducts) unsubscribeProducts()
 })
 
-// 3. UPDATED: Search Logic
+// --- Columns ---
+const columns = [
+  {
+    name: 'id',
+    label: 'Order #',
+    field: (row) => row.orderNumber || row.id,
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'customerName',
+    label: 'Customer',
+    field: (row) => row.customerName,
+    align: 'left',
+    sortable: true,
+  },
+  { name: 'date', label: 'Date', field: 'createdAt', align: 'left', sortable: true },
+  { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
+  { name: 'total', label: 'Total', field: 'total', align: 'right', sortable: true },
+  { name: 'actions', label: '', field: 'actions', align: 'center' },
+]
+
+// --- Filtering Logic ---
 const filteredOrders = computed(() => {
   let list = orders.value
 
-  // Status Filter
   if (statusFilter.value !== 'All') {
     list = list.filter((o) => o.status === statusFilter.value)
   }
 
-  // Search Filter
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
     list = list.filter((o) => {
-      // Search by Firestore ID
       const hasId = o.id && o.id.toLowerCase().includes(q)
-
-      // Search by Order Number (e.g. 20260121...)
       const hasOrderNum = o.orderNumber && String(o.orderNumber).toLowerCase().includes(q)
-
-      // Search by Customer Name
-      const custName = o.customer?.name || o.customerName || ''
+      const custName = o.customerName || o.customer?.name || ''
       const hasName = custName.toLowerCase().includes(q)
-
       return hasId || hasOrderNum || hasName
     })
   }
   return list
 })
 
+// --- Helpers ---
 const formatDate = (val) => {
   if (!val) return '-'
-  if (val && typeof val.toDate === 'function') {
-    return (
-      val.toDate().toLocaleDateString() +
-      ' ' +
-      val.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    )
-  }
-  const d = new Date(val)
-  return isNaN(d.getTime())
+  const dateObj = val.toDate ? val.toDate() : new Date(val)
+  return isNaN(dateObj)
     ? '-'
-    : d.toLocaleDateString() +
-        ' ' +
-        d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : dateObj.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
 }
 
 const getStatusColor = (status) => {
-  const map = {
-    Pending: 'orange-7',
-    Paid: 'green-6',
-    Shipped: 'blue-6',
-    Cancelled: 'red-5',
+  switch (status) {
+    case 'Paid':
+      return 'positive'
+    case 'Pending':
+      return 'warning'
+    case 'Void':
+      return 'negative'
+    default:
+      return 'grey'
   }
-  return map[status] || 'grey-6'
 }
 
 const formatTotal = (row) => {
-  let val = row.total || row.totalAmount
-
-  if (val === undefined || val === null) {
-    const items = Array.isArray(row.items) ? row.items : []
-    val = items.reduce((acc, item) => {
-      const price = Number(item.unitPrice || item.price || item.productPrice || 0)
-      const qty = Number(item.quantity || 1)
-      return acc + price * qty
-    }, 0)
-
-    if (row.customer && row.customer.discountAmount) {
-      val = val - Number(row.customer.discountAmount)
-    }
+  // Robust total calculation
+  let val = row.totalAmount ?? row.total
+  if (val === undefined) {
+    const items = row.items || []
+    val = items.reduce((acc, i) => acc + Number(i.unitPrice) * Number(i.quantity), 0)
   }
-
   return `₱${Number(val).toFixed(2)}`
 }
 
@@ -342,3 +277,9 @@ const openReceipt = (order) => {
   showReceiptDialog.value = true
 }
 </script>
+
+<style scoped>
+.hover-bg:hover {
+  background-color: #f5f5f5;
+}
+</style>
