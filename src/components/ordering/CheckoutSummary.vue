@@ -103,6 +103,7 @@
             hide-bottom-space
             @focus="$event.target.select()"
             placeholder="0.00"
+            @keyup.enter="openPaymentModal"
           >
             <template v-slot:prepend>
               <span class="text-caption text-grey-5">₱</span>
@@ -176,7 +177,8 @@
         </q-card-section>
 
         <q-card-actions align="right" class="q-pa-md bg-grey-1">
-          <q-btn flat label="Back" color="grey-8" v-close-popup />
+          <q-btn flat label="Back" color="grey-8" v-close-popup :disable="loading" />
+
           <q-btn
             unelevated
             color="primary"
@@ -185,6 +187,7 @@
             icon="print"
             @click="completeOrder"
             :loading="loading"
+            :disable="loading"
           />
         </q-card-actions>
       </q-card>
@@ -193,33 +196,31 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue' // Removed 'watch' import
-import { useOrderStore } from 'src/stores/orderStore'
+import { ref, computed, onMounted } from 'vue'
 import { useSystemSettingsStore } from 'src/stores/systemSettingsStore'
 import { useQuasar } from 'quasar'
 
 const $q = useQuasar()
+const settingsStore = useSystemSettingsStore()
 
 // --- Props & Emits ---
 const props = defineProps({
   subtotal: { type: Number, default: 0 },
   cartLength: { type: Number, default: 0 },
   totalItems: { type: Number, default: 0 },
+  customerName: { type: String, default: '' },
+  // 🟢 IMPORTANT: Receive the lock state from parent
+  loading: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['pay-now', 'clear-cart'])
-
-// --- Stores ---
-const orderStore = useOrderStore()
-const settingsStore = useSystemSettingsStore()
+const emit = defineEmits(['pay-now', 'clear-cart', 'save-draft'])
 
 // --- State ---
-const loading = computed(() => orderStore.loading)
 const taxValue = ref(0)
 const discountMode = ref('percent')
 const discountValue = ref(0)
 const paymentMode = ref('Cash')
-const amountPaid = ref(0) // Initialize as 0
+const amountPaid = ref(0)
 const showPaymentDialog = ref(false)
 
 const paymentOptions = ['Cash', 'GCash', 'Card', 'Bank Transfer']
@@ -250,8 +251,6 @@ const totalAmount = computed(() => {
 
 const change = computed(() => Math.max(0, amountPaid.value - totalAmount.value))
 
-// --- Note: The watcher that auto-filled amountPaid is removed here ---
-
 // --- Methods ---
 const formatPrice = (val) => {
   return (Number(val) || 0).toLocaleString('en-US', {
@@ -273,25 +272,31 @@ const handleVoid = () => {
     ok: { label: 'Void Order', color: 'negative', flat: true },
   }).onOk(() => {
     emit('clear-cart')
-    // Reset inputs
     amountPaid.value = 0
   })
 }
 
 const openPaymentModal = () => {
-  // Logic: Ensure payment is sufficient
+  if (props.cartLength === 0) return
+
   if (amountPaid.value < totalAmount.value) {
     $q.notify({
       type: 'warning',
       message: `Insufficient payment. Need ₱${formatPrice(totalAmount.value - amountPaid.value)} more.`,
+      position: 'top',
     })
     return
   }
   showPaymentDialog.value = true
 }
 
-const completeOrder = async () => {
-  const orderSummary = {
+// 🟢 REFACTORED: Only Emits Data (Parent handles DB + Lock)
+const completeOrder = () => {
+  // If parent says loading, stop here
+  if (props.loading) return
+
+  // 1. Prepare Financial Data
+  const summaryData = {
     subtotal: props.subtotal,
     taxAmount: taxAmount.value,
     discountAmount: discountAmount.value,
@@ -304,22 +309,14 @@ const completeOrder = async () => {
     change: change.value,
   }
 
-  emit('pay-now', orderSummary)
+  // 2. Send to Parent (POSPage.vue)
+  emit('pay-now', summaryData)
+
+  // 3. Close Dialog
   showPaymentDialog.value = false
-  printReceipt(orderSummary)
 
-  // Optional: Reset amountPaid after successful order
+  // 4. Reset Local Input
   amountPaid.value = 0
-}
-
-const printReceipt = (summary) => {
-  console.log('Printing Receipt...', summary)
-  $q.notify({
-    type: 'positive',
-    icon: 'print',
-    message: 'Order Completed. Printing Receipt...',
-    position: 'top',
-  })
 }
 </script>
 

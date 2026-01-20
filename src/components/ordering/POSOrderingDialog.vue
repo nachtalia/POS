@@ -222,7 +222,8 @@
                             v-if="item.selectedAddons?.length"
                             class="text-grey-6 text-xs q-mt-xs"
                           >
-                            + {{ item.selectedAddons.map((a) => a.name || a.label).join(', ') }}
+                            +
+                            {{ item.selectedAddons.map((a) => a.name || a.label).join(', ') }}
                           </div>
                           <div v-if="item.note" class="text-italic text-grey-5 q-mt-xs">
                             "{{ item.note }}"
@@ -431,7 +432,8 @@
 import { ref, computed, reactive, onMounted, onUnmounted } from 'vue'
 import { date, useQuasar } from 'quasar'
 import { db } from 'src/services/firebase'
-import { collection, onSnapshot, query, addDoc, serverTimestamp } from 'firebase/firestore'
+// ⚠️ FIX: Removed 'addDoc' from imports to prevent manual DB writing
+import { collection, onSnapshot, query, serverTimestamp } from 'firebase/firestore'
 import { useAddonStore } from 'src/stores/addonStore'
 import { useOrderStore } from 'src/stores/orderStore'
 import { logAudit } from 'src/services/auditService'
@@ -624,10 +626,12 @@ const saveAsDraft = () => {
   })
 }
 
+// ⚠️ FIX: Rewritten Submit Order Function
 const submitOrder = async (summaryData) => {
+  // 1. Prepare data WITHOUT 'orderNumber' and WITHOUT 'id'
   const orderData = {
     customer: customer.value,
-    customerName: customer.value.name || '',
+    customerName: customer.value.name || 'Walk-in Customer',
     status: 'Paid',
     ...summaryData,
     itemCount: summaryData.itemCount,
@@ -649,37 +653,37 @@ const submitOrder = async (summaryData) => {
     })),
     createdAt: serverTimestamp(),
     time: serverTimestamp(),
-    orderNumber: `ORD-${Date.now().toString().slice(-6)}`,
+    // ⚠️ CRITICAL: Removed "orderNumber: 'ORD-...'" so we don't force the old format
   }
 
   try {
-    const docRef = await addDoc(collection(db, 'orders'), orderData)
+    // 2. Use Store Action instead of addDoc
+    // This allows the store to run the Transaction for YYYYMMDD-SEQ format
+    const finalOrder = await orderStore.addOrder(orderData)
+
+    // 3. Log Audit using the real ID from the store
     await logAudit({
       module: 'ordering',
       action: 'add',
       entityType: 'order',
-      entityId: docRef.id,
+      entityId: finalOrder.id,
       details: {
-        orderNumber: orderData.orderNumber,
-        status: orderData.status,
-        totalAmount: orderData.totalAmount,
-        customerName: orderData.customerName,
+        orderNumber: finalOrder.orderNumber, // Now using the correct format e.g. 20260121-0001
+        status: finalOrder.status,
+        totalAmount: finalOrder.totalAmount,
+        customerName: finalOrder.customerName,
       },
     })
-    await orderStore.fetchOrders()
 
     $q.notify({
       type: 'positive',
-      message: `Order #${orderData.orderNumber} placed!`,
+      message: `Order #${finalOrder.orderNumber} placed!`,
       icon: 'check_circle',
       position: 'top-right',
     })
 
-    receiptOrder.value = {
-      ...orderData,
-      customerName: orderData.customerName,
-      date: new Date().toISOString(),
-    }
+    // 4. Update Receipt with the REAL order from the store
+    receiptOrder.value = finalOrder
     showReceipt.value = true
     clearCartSilently()
   } catch (error) {

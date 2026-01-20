@@ -31,8 +31,10 @@ export default route(function ({ store }) {
     const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
 
     // 2. Check if user is logged in
-    // Because of the boot file, this is now GUARANTEED to be correct on reload
     const isAuthenticated = !!authStore.user
+
+    // Helper: Get Role safely
+    const userRole = authStore.user?.role || ''
 
     // SCENARIO 1: Accessing Protected Route && NOT Logged In
     if (requiresAuth && !isAuthenticated) {
@@ -53,16 +55,22 @@ export default route(function ({ store }) {
       if (requiredPermissions) {
         const userPerms = authStore.permissions || []
 
-        // Ensure userPerms is an array to prevent .includes errors
+        // --- THE FIX IS HERE ---
+        // We explicitly check the role string (lowercased) to ensure superadmin always passes
+        const isSuperAdminRole = userRole.toLowerCase() === 'superadmin'
+
         const hasPermission =
-          authStore.isSuperAdmin ||
+          isSuperAdminRole ||
           (Array.isArray(userPerms) && userPerms.includes('*')) ||
           (Array.isArray(userPerms) && requiredPermissions.some((p) => userPerms.includes(p)))
 
         if (hasPermission) {
           next()
         } else {
-          next({ path: '/error-403' })
+          console.warn(
+            `Access Denied. Role: ${userRole}, Perms: ${userPerms}, Required: ${requiredPermissions}`,
+          )
+          next({ path: '/error-403' }) // Ensure this route exists in your routes.js!
         }
       } else {
         next()

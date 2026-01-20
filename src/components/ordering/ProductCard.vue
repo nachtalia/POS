@@ -5,24 +5,7 @@
     v-ripple
   >
     <div class="relative-position">
-      <q-img
-        :src="product.productImage || product.image"
-        :ratio="4/3"
-        class="rounded-tops"
-      >
-        <div class="absolute-top-right q-pa-xs">
-          <q-badge
-            :color="getCategoryColor(product.category)"
-            class="text-caption"
-          >
-            {{ product.category }}
-          </q-badge>
-        </div>
-        <div v-if="product.stock <= 5" class="absolute-bottom-left q-pa-xs">
-          <q-badge color="red" class="text-caption">
-            Low Stock: {{ product.stock }}
-          </q-badge>
-        </div>
+      <q-img :src="product.productImage || product.image" :ratio="4 / 3" class="rounded-tops">
       </q-img>
       <div class="absolute-bottom text-white text-center q-pa-xs bg-dark-overlay">
         <div class="text-subtitle2 text-weight-bold">
@@ -38,49 +21,22 @@
       <div class="text-weight-bold ellipsis text-grey-9">
         {{ product.name }}
       </div>
-      <div class="text-caption text-grey-6 q-mt-xs ellipsis-2-lines" style="height: 2.8em;">
+      <div class="text-caption text-grey-6 q-mt-xs ellipsis-2-lines" style="height: 2.8em">
         {{ product.description }}
       </div>
     </q-card-section>
-
-    <q-card-actions align="between" class="q-pt-none">
-      <div class="text-caption text-grey-6">
-        Stock: {{ product.stock }}
-      </div>
-      <q-btn
-        flat
-        dense
-        color="primary"
-        icon="add_shopping_cart"
-        size="sm"
-        @click.stop="$emit('add-to-cart', product)"
-      />
-    </q-card-actions>
   </q-card>
 </template>
 
 <script setup>
-
 defineProps({
   product: {
     type: Object,
-    required: true
-  }
+    required: true,
+  },
 })
 
 defineEmits(['add-to-cart'])
-
-const getCategoryColor = (category) => {
-  const colors = {
-    'Hot Coffee': 'brown',
-    'Iced Coffee': 'blue',
-    'Pastries': 'orange',
-    'Beans': 'deep-orange',
-    'Merchandise': 'purple',
-    'All': 'grey'
-  }
-  return colors[category] || 'grey'
-}
 </script>
 
 <style scoped>

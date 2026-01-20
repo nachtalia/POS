@@ -87,12 +87,12 @@ import { useQuasar } from 'quasar'
 
 // 1. Import Stores
 import { useSystemSettingsStore } from 'src/stores/systemSettingsStore'
-// Ensure this path points to the new store file we created above
 import { useAuthStore } from 'src/features/index'
 
 // 2. Firebase Imports
+// ADDED: doc, getDoc
 import { signInWithEmailAndPassword } from 'firebase/auth'
-import { collection, getDocs, query, where, limit } from 'firebase/firestore'
+import { collection, getDocs, getDoc, doc, query, where, limit } from 'firebase/firestore'
 import { auth, db } from 'src/services/firebase'
 
 const router = useRouter()
@@ -146,17 +146,13 @@ const onLoginSubmit = async () => {
     $q.notify({ type: 'warning', message: 'Please enter email/username and password' })
     return
   }
-  if (password.value.length < 6) {
-    $q.notify({ type: 'warning', message: 'Password must be at least 6 characters' })
-    return
-  }
 
   loading.value = true
 
   try {
     let loginEmail = identifier.value
 
-    // 2. Resolve Username to Email
+    // 2. Resolve Username to Email (if user typed a username)
     if (!emailPattern.test(identifier.value)) {
       const q = query(collection(db, 'user'), where('username', '==', identifier.value), limit(1))
       const snap = await getDocs(q)
@@ -172,89 +168,75 @@ const onLoginSubmit = async () => {
     const userCredential = await signInWithEmailAndPassword(auth, loginEmail, password.value)
     const user = userCredential.user
 
-    console.log('Firebase Auth successful:', user.uid)
+    console.log('Firebase Auth successful. UID:', user.uid)
 
     // 4. Fetch User Role/Profile from Firestore
-    const roleQuery = query(collection(db, 'user'), where('email', '==', user.email), limit(1))
-    const roleSnap = await getDocs(roleQuery)
+    // FIX: Try to get document by UID first (Best Practice), then fallback to Email search
+    let userData = null
 
-    let userRole = 'staff'
+    // Attempt A: Direct lookup by UID (Fastest & Most Reliable)
+    const userDocRef = doc(db, 'user', user.uid)
+    const userDocSnap = await getDoc(userDocRef)
+
+    if (userDocSnap.exists()) {
+      userData = userDocSnap.data()
+    } else {
+      // Attempt B: Search by Email (Fallback if Doc ID != UID)
+      const emailQuery = query(collection(db, 'user'), where('email', '==', user.email), limit(1))
+      const emailSnap = await getDocs(emailQuery)
+      if (!emailSnap.empty) {
+        userData = emailSnap.docs[0].data()
+      }
+    }
+
+    let userRole = 'staff' // Default if nothing found
     let currentUsername = 'User'
     let userPermissions = []
 
-    if (!roleSnap.empty) {
-      const userData = roleSnap.docs[0].data()
+    if (userData) {
+      // READ THE ROLE CORRECTLY
       userRole = userData.role || 'staff'
       currentUsername = userData.username || 'User'
 
-      // --- LOGIC: Handle Superadmin Permissions ---
+      // --- PERMISSIONS LOGIC ---
       if (userRole === 'superadmin') {
-        // Force all permissions required by your router
-        userPermissions = [
-          'dashboard:view',
-          'ordering:view',
-          'inventory:view',
-          'transactions:view',
-          'settings:view',
-          'auditTrail:view',
-          'reports:view',
-          // User Management specific permissions
-          'userManagement:view',
-          'userManagement:add',
-          'userManagement:edit',
-          'userManagement:delete',
-        ]
+        userPermissions = ['*'] // Use Wildcard, Router handles the rest
       } else {
-        // Use stored permissions for everyone else
         userPermissions = userData.permissions || []
       }
-
-      // --- POPULATE STORE ---
-      authStore.setUser({
-        uid: user.uid,
-        email: user.email,
-        role: userRole,
-        username: currentUsername,
-      })
-
-      authStore.setPermissions(userPermissions)
-    } else {
-      // Fallback
-      authStore.setUser({
-        uid: user.uid,
-        email: user.email,
-        role: 'staff',
-        username: 'User',
-      })
     }
 
-    // 5. Notify
+    // 5. Populate Store
+    authStore.setUser({
+      uid: user.uid,
+      email: user.email,
+      role: userRole,
+      username: currentUsername,
+    })
+    authStore.setPermissions(userPermissions)
+
+    // 6. Notify
     $q.notify({
       color: 'positive',
-      message: `Welcome back, ${currentUsername}!`,
+      message: `Welcome back, ${currentUsername}! (${userRole})`,
       icon: 'check',
       position: 'top',
     })
 
-    // 6. REDIRECT LOGIC
-    if (['admin', 'superadmin'].includes(userRole) || userPermissions.includes('dashboard:view')) {
+    // 7. Redirect
+    if (['admin', 'superadmin'].includes(userRole)) {
       router.push({ name: 'Dashboard' })
     } else if (userPermissions.includes('ordering:view')) {
       router.push({ name: 'Ordering' })
-    } else if (userPermissions.includes('inventory:view')) {
-      router.push({ name: 'Inventory' })
     } else {
-      router.push({ name: 'Settings' })
+      router.push({ name: 'Dashboard' })
     }
   } catch (error) {
-    console.error('Login Error:', error.code || error)
+    console.error('Login Error:', error)
 
     let msg = 'Login failed. Please try again.'
     if (error.code === 'auth/invalid-credential') msg = 'Invalid email or password.'
-    if (error.code === 'auth/user-not-found') msg = 'Account not found.'
-    if (error.code === 'auth/wrong-password') msg = 'Incorrect password.'
     if (error.code === 'custom/username-not-found') msg = 'Username not found.'
-    if (error.code === 'permission-denied') msg = 'Access denied. Check your permissions.'
 
     $q.notify({
       color: 'negative',

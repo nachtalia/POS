@@ -31,7 +31,7 @@
                   outlined
                   dense
                   bg-color="white"
-                  placeholder="Search by ID or Customer..."
+                  placeholder="Search Order #, ID, or Customer..."
                 >
                   <template v-slot:prepend>
                     <q-icon name="search" class="text-grey-5" />
@@ -77,9 +77,14 @@
             <template v-slot:body="props">
               <q-tr :props="props">
                 <q-td key="id" :props="props">
-                  <span class="text-mono text-grey-8 text-weight-medium">
-                    {{ props.pageIndex + 1 }}
-                  </span>
+                  <div class="column cursor-pointer" @click="openReceipt(props.row)">
+                    <span class="text-weight-bold text-primary font-mono">
+                      {{ props.row.orderNumber || props.row.id.substring(0, 8) + '...' }}
+                    </span>
+                    <q-tooltip v-if="props.row.orderNumber">
+                      Internal ID: {{ props.row.id }}
+                    </q-tooltip>
+                  </div>
                 </q-td>
 
                 <q-td key="customerName" :props="props">
@@ -103,7 +108,7 @@
                   </q-badge>
                 </q-td>
 
-                <q-td key="total" :props="props" class="text-weight-bold text-primary">
+                <q-td key="total" :props="props" class="text-weight-bold text-grey-9">
                   {{ formatTotal(props.row) }}
                 </q-td>
 
@@ -118,7 +123,7 @@
                       icon="visibility"
                       @click="openReceipt(props.row)"
                     >
-                      <q-tooltip>View Details</q-tooltip>
+                      <q-tooltip>View Receipt</q-tooltip>
                     </q-btn>
                   </div>
                 </q-td>
@@ -177,8 +182,17 @@ const canCreateOrder = computed(() => authStore.can('create', 'ordering') || has
 let unsubscribeOrders = null
 let unsubscribeProducts = null
 
+// 2. UPDATED: Column Definitions
 const columns = [
-  { name: 'id', label: '#', field: 'id', align: 'left', style: 'width: 50px' },
+  {
+    name: 'id',
+    label: 'Order #', // Renamed label
+    // Field prioritizes orderNumber, falls back to ID
+    field: (row) => row.orderNumber || row.id,
+    align: 'left',
+    sortable: true,
+    style: 'width: 150px', // Give it a bit more space
+  },
   {
     name: 'customerName',
     label: 'Customer',
@@ -213,6 +227,7 @@ onMounted(() => {
   unsubscribeOrders = onSnapshot(
     ordersQuery,
     (snapshot) => {
+      // The store saves orderNumber, so ...doc.data() will include it
       orders.value = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
@@ -247,20 +262,30 @@ onUnmounted(() => {
   if (unsubscribeProducts) unsubscribeProducts()
 })
 
+// 3. UPDATED: Search Logic
 const filteredOrders = computed(() => {
   let list = orders.value
 
+  // Status Filter
   if (statusFilter.value !== 'All') {
     list = list.filter((o) => o.status === statusFilter.value)
   }
 
+  // Search Filter
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
     list = list.filter((o) => {
+      // Search by Firestore ID
       const hasId = o.id && o.id.toLowerCase().includes(q)
+
+      // Search by Order Number (e.g. 20260121...)
+      const hasOrderNum = o.orderNumber && String(o.orderNumber).toLowerCase().includes(q)
+
+      // Search by Customer Name
       const custName = o.customer?.name || o.customerName || ''
       const hasName = custName.toLowerCase().includes(q)
-      return hasId || hasName
+
+      return hasId || hasOrderNum || hasName
     })
   }
   return list
@@ -317,9 +342,3 @@ const openReceipt = (order) => {
   showReceiptDialog.value = true
 }
 </script>
-
-<style scoped>
-.text-mono {
-  font-family: 'Roboto Mono', monospace;
-}
-</style>
