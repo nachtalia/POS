@@ -5,7 +5,7 @@ const routes = [
     children: [
       {
         path: '',
-        name: 'login', // <--- IMPORTANT: Added Name
+        name: 'login',
         component: () => import('pages/auth/LoginPage.vue'),
       },
     ],
@@ -13,7 +13,7 @@ const routes = [
   {
     path: '/dashboard',
     component: () => import('layouts/MainLayout.vue'),
-    meta: { requiresAuth: true }, // <--- IMPORTANT: Protects all children
+    meta: { requiresAuth: true },
     children: [
       {
         path: '',
@@ -62,6 +62,7 @@ const routes = [
           permissions: ['transactions:view'],
         },
       },
+      // --- USER MANAGEMENT ROUTE ---
       {
         path: '/userManagement',
         name: 'UserManagement',
@@ -71,7 +72,12 @@ const routes = [
           label: 'User Management',
           icon: 'people',
           caption: 'Manage User',
-          permissions: ['userManagement:view'],
+          permissions: [
+            'userManagement:view',
+            'userManagement:add',
+            'userManagement:edit',
+            'userManagement:delete',
+          ],
         },
       },
       {

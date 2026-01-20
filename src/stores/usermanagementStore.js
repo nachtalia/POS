@@ -1,16 +1,16 @@
 import { defineStore } from 'pinia'
-import { db, secondaryAuth } from '../services/firebase'
+import { db, secondaryAuth } from 'src/services/firebase'
 import {
   collection,
   getDocs,
-  addDoc,
+  setDoc, // <--- CHANGED: Import setDoc instead of addDoc
   deleteDoc,
   doc,
   updateDoc,
   Timestamp,
 } from 'firebase/firestore'
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth'
-import { logAudit } from '../services/auditService'
+import { logAudit } from 'src/services/auditService'
 
 export const useUserManagementStore = defineStore('usermanagementStore', {
   state: () => ({
@@ -34,49 +34,50 @@ export const useUserManagementStore = defineStore('usermanagementStore', {
       }
     },
 
-    // Updated addUser with Debug Logs
+    // Updated addUser
     async addUser(userData) {
-      // DEBUG: Print what the store received
-      console.log('--- STORE: addUser Called ---')
-      console.log('Received Data:', userData)
-      console.log('Permissions Check:', userData.permissions)
+      console.log('--- STORE: addUser Called ---', userData)
 
-      // Destructure and provide defaults
       const { username, email, password, role, permissions = [] } = userData
 
       try {
+        // 1. Create User in Firebase Auth
         const userCred = await createUserWithEmailAndPassword(secondaryAuth, email, password)
-        const uid = userCred.user.uid
+        const uid = userCred.user.uid // Get the actual Auth UID
 
-        // Construct Payload
+        // 2. Construct Payload
         const payload = {
           username,
           email,
           role,
-          permissions: permissions, // Explicitly setting this
-          uid,
+          permissions: permissions,
+          uid, // Store UID inside document too (optional but helpful)
           createdAt: Timestamp.now(),
           updatedAt: Timestamp.now(),
         }
 
-        // DEBUG: Print what we are sending to Firestore
-        console.log('--- STORE: Saving to Firestore ---')
-        console.log('Payload:', payload)
+        console.log('--- STORE: Saving to Firestore with ID:', uid)
 
-        const docRef = await addDoc(collection(db, 'user'), payload)
+        // 3. CRITICAL CHANGE: Use setDoc with the UID
+        // This ensures Document ID === Auth UID
+        await setDoc(doc(db, 'user', uid), payload)
 
-        this.users.push({ id: docRef.id, ...payload })
+        // 4. Update Local State
+        this.users.push({ id: uid, ...payload })
 
+        // 5. Audit Log
         await logAudit({
           module: 'userManagement',
           action: 'add',
           entityType: 'user',
-          entityId: docRef.id,
+          entityId: uid, // Use the UID as the reference
           details: { username, email, role, permissions },
         })
 
+        // 6. Sign out the secondary auth (so it doesn't interfere with current session)
         await signOut(secondaryAuth)
-        return docRef.id
+
+        return uid
       } catch (error) {
         console.error('Error adding user:', error)
         throw error
@@ -87,15 +88,21 @@ export const useUserManagementStore = defineStore('usermanagementStore', {
       try {
         const ref = doc(db, 'user', id)
         const safeUpdates = { ...(updates || {}) }
+
+        // Don't save password to Firestore
         if ('password' in safeUpdates) {
           delete safeUpdates.password
         }
+
         const payload = { ...safeUpdates, updatedAt: Timestamp.now() }
+
         await updateDoc(ref, payload)
+
         const idx = this.users.findIndex((u) => u.id === id)
         if (idx !== -1) {
           this.users[idx] = { ...this.users[idx], ...payload }
         }
+
         await logAudit({
           module: 'userManagement',
           action: 'edit',
@@ -111,8 +118,13 @@ export const useUserManagementStore = defineStore('usermanagementStore', {
 
     async deleteUser(id) {
       try {
+        // Note: This only deletes from Firestore.
+        // Deleting from Auth requires Cloud Functions if done from the client SDK
+        // (unless you log in as that user, which you can't easily do here).
         await deleteDoc(doc(db, 'user', id))
+
         this.users = this.users.filter((u) => u.id !== id)
+
         await logAudit({
           module: 'userManagement',
           action: 'delete',

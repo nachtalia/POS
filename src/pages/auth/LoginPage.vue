@@ -87,7 +87,8 @@ import { useQuasar } from 'quasar'
 
 // 1. Import Stores
 import { useSystemSettingsStore } from 'src/stores/systemSettingsStore'
-import { useAuthStore } from 'src/features/index.js'
+// Ensure this path points to the new store file we created above
+import { useAuthStore } from 'src/stores/useAuthStore'
 
 // 2. Firebase Imports
 import { signInWithEmailAndPassword } from 'firebase/auth'
@@ -185,7 +186,28 @@ const onLoginSubmit = async () => {
       const userData = roleSnap.docs[0].data()
       userRole = userData.role || 'staff'
       currentUsername = userData.username || 'User'
-      userPermissions = userData.permissions || []
+
+      // --- LOGIC: Handle Superadmin Permissions ---
+      if (userRole === 'superadmin') {
+        // Force all permissions required by your router
+        userPermissions = [
+          'dashboard:view',
+          'ordering:view',
+          'inventory:view',
+          'transactions:view',
+          'settings:view',
+          'auditTrail:view',
+          'reports:view',
+          // User Management specific permissions
+          'userManagement:view',
+          'userManagement:add',
+          'userManagement:edit',
+          'userManagement:delete',
+        ]
+      } else {
+        // Use stored permissions for everyone else
+        userPermissions = userData.permissions || []
+      }
 
       // --- POPULATE STORE ---
       authStore.setUser({
@@ -195,12 +217,7 @@ const onLoginSubmit = async () => {
         username: currentUsername,
       })
 
-      if (userPermissions.length > 0) {
-        authStore.setPermissions(userPermissions)
-      } else {
-        await authStore.fetchPermissions()
-        userPermissions = authStore.permissions
-      }
+      authStore.setPermissions(userPermissions)
     } else {
       // Fallback
       authStore.setUser({
@@ -220,7 +237,7 @@ const onLoginSubmit = async () => {
     })
 
     // 6. REDIRECT LOGIC
-    if (userRole === 'admin' || userPermissions.includes('dashboard:view')) {
+    if (['admin', 'superadmin'].includes(userRole) || userPermissions.includes('dashboard:view')) {
       router.push({ name: 'Dashboard' })
     } else if (userPermissions.includes('ordering:view')) {
       router.push({ name: 'Ordering' })
@@ -237,6 +254,7 @@ const onLoginSubmit = async () => {
     if (error.code === 'auth/user-not-found') msg = 'Account not found.'
     if (error.code === 'auth/wrong-password') msg = 'Incorrect password.'
     if (error.code === 'custom/username-not-found') msg = 'Username not found.'
+    if (error.code === 'permission-denied') msg = 'Access denied. Check your permissions.'
 
     $q.notify({
       color: 'negative',
@@ -254,34 +272,27 @@ const onLoginSubmit = async () => {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
 }
-
 .input-underline :deep(.q-field__control) {
   background-color: transparent !important;
   padding-left: 0;
   padding-right: 0;
 }
-
 .input-underline :deep(.q-field__control:before) {
   border-bottom: 1px solid #ccc;
 }
-
 .input-underline :deep(.q-field__control:after) {
   height: 2px;
 }
-
 .validation-error :deep(.q-field__label) {
   color: #c10015;
 }
-
 .validation-error :deep(.q-field__control:after) {
   background: #c10015;
   transform: scaleX(1);
 }
-
 .validation-success :deep(.q-field__label) {
   color: #21ba45;
 }
-
 .validation-success :deep(.q-field__control:after) {
   background: #21ba45;
   transform: scaleX(1);
