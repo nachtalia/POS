@@ -6,9 +6,10 @@ import {
   createWebHashHistory,
 } from 'vue-router'
 import routes from './routes'
-import { useAuthStore } from 'src/features/index' // Ensure path is correct
+import { useAuthStore } from 'src/features/index'
 
-export default route(function (/* { store, ssrContext } */) {
+/* We destructure { store } here so we can pass it to Pinia */
+export default route(function ({ store }) {
   const createHistory = process.env.SERVER
     ? createMemoryHistory
     : process.env.VUE_ROUTER_MODE === 'history'
@@ -23,52 +24,51 @@ export default route(function (/* { store, ssrContext } */) {
 
   // --- NAVIGATION GUARD ---
   Router.beforeEach((to, from, next) => {
-    const authStore = useAuthStore()
+    // PASS THE STORE INSTANCE HERE
+    const authStore = useAuthStore(store)
 
-    // 1. Check if the route requires authentication (checked parent meta too)
+    // 1. Check if the route requires authentication
     const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
 
     // 2. Check if user is logged in
-    const isAuthenticated = !!authStore.user // Or authStore.isAuthenticated if you have that getter
+    // Because of the boot file, this is now GUARANTEED to be correct on reload
+    const isAuthenticated = !!authStore.user
 
     // SCENARIO 1: Accessing Protected Route && NOT Logged In
     if (requiresAuth && !isAuthenticated) {
-      // Prevent infinite loop: Only redirect if we are NOT already at login
       if (to.name !== 'login') {
         next({ name: 'login' })
       } else {
-        next() // We are at login, let it show
+        next()
       }
     }
     // SCENARIO 2: Accessing Login Page && ALREADY Logged In
     else if (to.name === 'login' && isAuthenticated) {
-      next({ name: 'Dashboard' }) // Redirect to main dashboard
+      next({ name: 'Dashboard' })
     }
     // SCENARIO 3: Accessing Protected Route && Logged In (Check Permissions)
     else if (requiresAuth && isAuthenticated) {
-      // Check if route has specific permissions
       const requiredPermissions = to.meta.permissions
 
       if (requiredPermissions) {
-        // Simple permission check (User has at least one of the required perms)
         const userPerms = authStore.permissions || []
+
+        // Ensure userPerms is an array to prevent .includes errors
         const hasPermission =
           authStore.isSuperAdmin ||
-          userPerms.includes('*') ||
-          requiredPermissions.some((p) => userPerms.includes(p))
+          (Array.isArray(userPerms) && userPerms.includes('*')) ||
+          (Array.isArray(userPerms) && requiredPermissions.some((p) => userPerms.includes(p)))
 
         if (hasPermission) {
           next()
         } else {
-          // User logged in but no permission for this specific page
-          next({ path: '/error-403' }) // Or just next(false) to stay put
+          next({ path: '/error-403' })
         }
       } else {
-        // No specific permissions required, just auth
         next()
       }
     }
-    // SCENARIO 4: Public Pages (404, etc)
+    // SCENARIO 4: Public Pages
     else {
       next()
     }

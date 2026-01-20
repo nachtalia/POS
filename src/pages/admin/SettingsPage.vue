@@ -1,12 +1,14 @@
 <template>
   <q-page class="bg-blue-grey-1 flex flex-center no-scroll overflow-hidden">
-    <div class="column full-width q-px-md" style="max-width: 1000px; height: 70vh">
-      <div class="col-auto q-mb-sm">
+    <div class="column full-width q-px-md" style="max-width: 1000px; height: 75vh">
+      <div class="col-auto q-mb-md">
         <div class="row items-center">
           <q-icon name="style" size="sm" color="primary" class="q-mr-xs" />
           <div>
-            <div class="text-h5 text-weight-bolder text-blue-grey-10">System Branding</div>
-            <div class="text-caption text-grey-7">Manage your visual identity assets</div>
+            <div class="text-h5 text-weight-bolder text-blue-grey-10">Store Branding</div>
+            <div class="text-caption text-grey-7">
+              Configure your visual identity and global pricing rules
+            </div>
           </div>
         </div>
       </div>
@@ -14,7 +16,7 @@
       <div class="col row q-col-gutter-md overflow-hidden">
         <div class="col-12 col-md-5 column">
           <q-card class="col shadow-1 bg-white q-pa-md border-radius-lg column">
-            <div class="text-overline text-primary text-weight-bold q-mb-xs">Visual Assets</div>
+            <div class="text-overline text-primary text-weight-bold q-mb-sm">Logo Assets</div>
 
             <div
               class="col upload-zone column items-center justify-center text-center cursor-pointer relative-position"
@@ -24,19 +26,17 @@
               @drop.prevent="onDropActive"
               @click="$refs.activeFileInput.pickFiles()"
             >
-              <q-avatar size="110px" class="q-mb-sm shadow-1 bg-grey-1">
+              <q-avatar size="100px" class="q-mb-sm shadow-1 bg-grey-1">
                 <q-img :src="previewActive || form.defaultLogo" fit="contain" />
               </q-avatar>
-              <div class="text-weight-bold text-blue-grey-9 text-caption">Active Logo</div>
-
+              <div class="text-weight-bold text-blue-grey-9 text-caption">Active System Logo</div>
               <div
                 class="row items-center justify-center text-grey-6 q-gutter-xs"
                 style="font-size: 10px"
               >
                 <q-icon name="cloud_upload" size="14px" />
-                <span>Drag or Click to upload</span>
+                <span>Change Photo</span>
               </div>
-
               <q-btn
                 v-if="form.systemLogo"
                 flat
@@ -46,16 +46,7 @@
                 size="sm"
                 class="absolute-top-right q-ma-xs z-top"
                 @click.stop="clearActiveLogo"
-              >
-                <q-tooltip>Remove custom logo</q-tooltip>
-              </q-btn>
-
-              <div
-                v-if="invalidActive"
-                class="absolute-full flex flex-center bg-red-1 text-negative text-caption text-weight-bold border-radius-md"
-              >
-                Invalid Format
-              </div>
+              />
             </div>
 
             <q-separator class="q-my-md" />
@@ -68,22 +59,15 @@
               @drop.prevent="onDropDefault"
               @click="$refs.defaultFileInput.pickFiles()"
             >
-              <q-avatar size="80px" class="q-mb-xs bg-grey-2 shadow-1">
+              <q-avatar size="70px" class="q-mb-xs bg-grey-2 shadow-1">
                 <q-img
                   :src="previewDefault || 'https://cdn.quasar.dev/logo-v2/svg/logo.svg'"
                   fit="contain"
                 />
               </q-avatar>
-              <div class="text-weight-bold text-blue-grey-9 text-caption">Fallback Default</div>
-
-              <div
-                class="row items-center justify-center text-grey-6 q-gutter-xs"
-                style="font-size: 10px"
-              >
-                <q-icon name="ads_click" size="14px" />
-                <span>Drag or Click to change</span>
+              <div class="text-weight-bold text-blue-grey-9" style="font-size: 11px">
+                Fallback Default
               </div>
-
               <q-btn
                 v-if="previewDefaultUrl || form.defaultLogo"
                 flat
@@ -93,16 +77,7 @@
                 size="sm"
                 class="absolute-top-right q-ma-xs z-top"
                 @click.stop="clearDefaultLogo"
-              >
-                <q-tooltip>Reset to system default</q-tooltip>
-              </q-btn>
-
-              <div
-                v-if="invalidDefault"
-                class="absolute-full flex flex-center bg-red-1 text-negative text-caption text-weight-bold border-radius-md"
-              >
-                Invalid Format
-              </div>
+              />
             </div>
 
             <q-file
@@ -125,57 +100,77 @@
         <div class="col-12 col-md-7 column">
           <q-card class="col shadow-1 bg-white q-pa-lg border-radius-lg column">
             <q-form @submit="onSubmit" class="column full-height">
-              <div class="text-overline text-primary text-weight-bold q-mb-sm">Information</div>
+              <div class="text-overline text-primary text-weight-bold q-mb-sm">System Identity</div>
 
-              <div class="col q-gutter-y-md">
+              <div class="q-gutter-y-sm q-mb-lg">
                 <q-input
                   v-model="form.systemName"
                   label="Display Name"
                   outlined
                   dense
                   stack-label
-                  placeholder="Enter system or shop name"
-                  maxlength="30"
-                  counter
-                  :rules="[
-                    (val) => !!val || 'Required',
-                    (val) => /^[a-zA-Z0-9 ]+$/.test(val) || 'Only text and numbers allowed',
-                  ]"
+                  placeholder="Enter shop name"
+                  :rules="[(val) => !!val || 'Required']"
                 >
                   <template v-slot:prepend>
-                    <q-icon name="badge" color="primary" size="xs" />
+                    <q-icon name="storefront" color="primary" size="xs" />
                   </template>
                 </q-input>
-                <q-input
-                  v-model="form.defaultLogo"
-                  label="Asset Path Reference"
-                  outlined
-                  dense
-                  stack-label
-                  readonly
-                  bg-color="grey-1"
-                >
-                  <template v-slot:prepend>
-                    <q-icon name="link" color="grey" size="xs" />
-                  </template>
-                </q-input>
+              </div>
 
-                <div class="info-banner q-pa-sm row no-wrap items-center">
-                  <q-icon name="info" color="blue-7" size="xs" class="q-mr-sm" />
-                  <div style="font-size: 11px" class="text-blue-grey-8">
-                    Custom logos are stored as base64 assets. We recommend using square images with
-                    transparent backgrounds (PNG) for better UI integration.
-                  </div>
+              <div class="text-overline text-teal text-weight-bold q-mb-sm">Order Defaults</div>
+
+              <div class="row q-col-gutter-md q-mb-md">
+                <div class="col-6">
+                  <q-input
+                    v-model.number="form.defaultTax"
+                    label="Sales Tax"
+                    type="number"
+                    outlined
+                    dense
+                    stack-label
+                    suffix="%"
+                    :rules="[(val) => val >= 0 || 'Invalid']"
+                  >
+                    <template v-slot:prepend>
+                      <q-icon name="percent" color="teal" size="xs" />
+                    </template>
+                  </q-input>
+                </div>
+
+                <div class="col-6">
+                  <q-input
+                    v-model.number="form.defaultDiscount"
+                    label="Standard Discount"
+                    type="number"
+                    outlined
+                    dense
+                    stack-label
+                    suffix="%"
+                    :rules="[(val) => val >= 0 || 'Invalid']"
+                  >
+                    <template v-slot:prepend>
+                      <q-icon name="savings" color="orange-8" size="xs" />
+                    </template>
+                  </q-input>
+                </div>
+              </div>
+
+              <div class="info-banner q-pa-sm row no-wrap items-start q-mb-md">
+                <q-icon name="tips_and_updates" color="blue-7" size="xs" class="q-mr-sm q-mt-xs" />
+                <div style="font-size: 11px" class="text-blue-grey-8">
+                  <b>Tip:</b> Defaults will auto-populate the checkout page but can be adjusted
+                  per-order by authorized staff.
                 </div>
               </div>
 
               <div class="row justify-end q-mt-auto">
                 <q-btn
-                  label="Save Changes"
+                  label="Update Settings"
                   type="submit"
                   color="primary"
                   unelevated
-                  class="q-px-lg border-radius-md"
+                  class="q-px-xl border-radius-md"
                   :loading="store.loading"
                 />
               </div>
@@ -196,7 +191,11 @@ import { SystemSettingsModel } from 'src/services/models/SystemSettings.js'
 const $q = useQuasar()
 const store = useSystemSettingsStore()
 
-const form = reactive(new SystemSettingsModel())
+// Initialize form using the Model defaults
+const form = reactive({
+  ...new SystemSettingsModel(),
+})
+
 const activeFile = ref(null)
 const defaultFile = ref(null)
 const previewActiveUrl = ref(null)
@@ -268,22 +267,27 @@ const clearActiveLogo = () => {
 const clearDefaultLogo = () => {
   defaultFile.value = null
   previewDefaultUrl.value = null
-  form.defaultLogo = 'https://cdn.quasar.dev/logo-v2/svg/logo.svg' // Reset to factory default
+  form.defaultLogo = 'https://cdn.quasar.dev/logo-v2/svg/logo.svg'
 }
 
 const onSubmit = async () => {
   await store.saveSettings(form)
   $q.notify({
     type: 'positive',
-    message: 'System settings updated successfully',
+    message: 'System configuration saved',
     position: 'top',
     timeout: 1500,
   })
 }
 
+// Fetch data on mount
 onMounted(async () => {
   await store.fetchSettings()
-  if (store.settings) Object.assign(form, store.settings)
+
+  if (store.settings) {
+    // This populates System Name, Logs, Tax, and Discount automatically
+    Object.assign(form, store.settings)
+  }
 })
 </script>
 
@@ -317,9 +321,9 @@ onMounted(async () => {
 }
 
 .info-banner {
-  background: #ebf4ff;
+  background: #f0f7ff;
   border-radius: 8px;
-  border: 1px solid #bee3f8;
+  border: 1px solid #d1e6ff;
 }
 
 .z-top {
