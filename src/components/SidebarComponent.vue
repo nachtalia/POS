@@ -1,59 +1,35 @@
 <template>
-  <q-drawer v-model="model" show-if-above :width="280" class="bg-grey-1">
+  <q-drawer v-model="model" show-if-above :width="280" bordered class="bg-white">
     <div class="column full-height no-wrap">
-      <div class="q-pa-md q-pt-lg">
-        <div class="row justify-center q-mb-lg">
-          <img
-            :src="displayedLogo"
-            alt="System Logo"
-            class="shadow-3"
-            style="height: 100px; width: 100px; object-fit: cover; border-radius: 50%"
-          />
+      <div class="q-pa-md">
+        <div class="row justify-center">
+          <div class="logo-container">
+            <img
+              :src="displayedLogo"
+              alt="System Logo"
+              class="shadow-2"
+              style="height: 100px; width: 100px; object-fit: cover; border-radius: 50%"
+            />
+          </div>
         </div>
-        <q-card flat bordered class="bg-white rounded-borders">
-          <q-item class="q-py-sm">
-            <q-item-section avatar>
-              <q-avatar size="40px" class="bg-grey-3 text-grey-8">
-                <span class="text-weight-bold">{{ userInitials }}</span>
-                <q-badge
-                  floating
-                  color="green"
-                  rounded
-                  transparent
-                  style="top: 30px; right: 0px; width: 10px; height: 10px; padding: 0"
-                />
-              </q-avatar>
-            </q-item-section>
-
-            <q-item-section>
-              <q-item-label class="text-weight-bold text-grey-9">
-                {{ currentUserName }}
-              </q-item-label>
-              <q-item-label caption class="text-grey-7" style="font-size: 0.75rem">
-                {{ currentUserEmail }}
-              </q-item-label>
-              <q-item-label caption class="text-primary text-weight-bold" style="font-size: 0.7rem">
-                {{ currentUserRole.toUpperCase() }}
-              </q-item-label>
-            </q-item-section>
-          </q-item>
-        </q-card>
       </div>
 
-      <q-scroll-area class="col fit">
-        <q-list padding class="text-grey-8">
-          <q-item-label
-            header
-            class="text-uppercase text-weight-bold text-grey-6 q-pl-md"
-            style="font-size: 0.7rem; letter-spacing: 1px"
-          >
-            Quick Access
-          </q-item-label>
+      <q-separator spaced />
 
-          <div class="q-px-sm">
+      <q-scroll-area class="col fit">
+        <q-list padding class="text-grey-8 q-px-sm">
+          <div class="q-mt-sm">
+            <q-item-label
+              header
+              class="text-uppercase text-weight-bolder text-grey-5 q-pl-md q-pb-sm"
+              style="font-size: 0.65rem; letter-spacing: 1.2px"
+            >
+              Menu
+            </q-item-label>
+
             <SidebarItems
               v-for="(route, index) in quickAccessRoutes"
-              :key="index"
+              :key="'qa-' + index"
               :name="route.name"
               :label="route.meta.label"
               :caption="route.meta.caption"
@@ -63,44 +39,45 @@
           </div>
 
           <div v-if="managementRoutes.length > 0" class="q-mt-md">
+            <q-separator spaced inset class="q-mb-md" />
+
             <q-item-label
               header
-              class="text-uppercase text-weight-bold text-grey-6 q-pl-md"
-              style="font-size: 0.7rem; letter-spacing: 1px"
+              class="text-uppercase text-weight-bolder text-grey-5 q-pl-md q-pb-sm"
+              style="font-size: 0.65rem; letter-spacing: 1.2px"
             >
               Management
             </q-item-label>
 
-            <div class="q-px-sm">
-              <SidebarItems
-                v-for="(route, index) in managementRoutes"
-                :key="index"
-                :name="route.name"
-                :label="route.meta.label"
-                :caption="route.meta.caption"
-                :icon="route.meta.icon"
-                :meta="route.meta"
-              />
-            </div>
+            <SidebarItems
+              v-for="(route, index) in managementRoutes"
+              :key="'mgmt-' + index"
+              :name="route.name"
+              :label="route.meta.label"
+              :caption="route.meta.caption"
+              :icon="route.meta.icon"
+              :meta="route.meta"
+            />
           </div>
         </q-list>
       </q-scroll-area>
 
-      <div class="q-pa-md bg-grey-2">
+      <div class="q-pa-md bg-white" style="border-top: 1px solid #e0e0e0">
         <q-btn
           unelevated
           outline
-          color="negative"
-          class="full-width q-mb-sm"
+          color="grey-5"
+          text-color="negative"
+          class="full-width q-mb-xs logout-btn"
           no-caps
           @click="onLogout"
         >
           <q-icon left name="logout" size="18px" />
-          <div>Sign Out</div>
+          <div class="text-weight-medium">Sign Out</div>
         </q-btn>
 
-        <div class="text-center">
-          <div class="text-caption text-grey-5">v1.0.0</div>
+        <div class="text-center q-mt-sm">
+          <div class="text-caption text-grey-4">v1.0.0</div>
         </div>
       </div>
     </div>
@@ -108,7 +85,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { storeToRefs } from 'pinia'
@@ -117,10 +94,8 @@ import _ from 'lodash'
 import { SidebarItems } from 'src/shared'
 import { useAuthStore } from 'src/features/index.js'
 import { useSystemSettingsStore } from 'src/stores/systemSettingsStore'
-
-import { signOut, onAuthStateChanged } from 'firebase/auth'
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore'
-import { auth, db } from 'src/services/firebase'
+import { signOut } from 'firebase/auth'
+import { auth } from 'src/services/firebase'
 
 const model = defineModel()
 const router = useRouter()
@@ -130,20 +105,7 @@ const systemSettingsStore = useSystemSettingsStore()
 
 const { settings } = storeToRefs(systemSettingsStore)
 
-const currentUserName = ref('Loading...')
-const currentUserEmail = ref('...')
-const currentUserRole = ref('')
-const fetchedPermissions = ref([])
-
-const userInitials = computed(() => {
-  if (currentUserName.value === 'Loading...' || !currentUserName.value) return 'U'
-  return currentUserName.value.charAt(0).toUpperCase()
-})
-
-const isSuperAdmin = computed(() => {
-  const role = currentUserRole.value.toLowerCase()
-  return role === 'admin' || role === 'superadmin'
-})
+// Fetching Logic Removed (Handled by MainLayout now)
 
 const displayedLogo = computed(() => {
   return (
@@ -153,90 +115,27 @@ const displayedLogo = computed(() => {
   )
 })
 
-onMounted(() => {
-  if (!settings.value) {
-    systemSettingsStore.fetchSettings()
-  }
-
-  onAuthStateChanged(auth, async (authUser) => {
-    if (authUser) {
-      currentUserEmail.value = authUser.email
-
-      try {
-        const q = query(collection(db, 'user'), where('email', '==', authUser.email))
-        const querySnapshot = await getDocs(q)
-
-        if (!querySnapshot.empty) {
-          const userData = querySnapshot.docs[0].data()
-          currentUserName.value = userData.username || 'User'
-          currentUserRole.value = userData.role || 'staff'
-
-          if (authStore.setUser) {
-            authStore.setUser({
-              uid: authUser.uid,
-              email: authUser.email,
-              ...userData,
-            })
-          }
-
-          if (!isSuperAdmin.value) {
-            if (Array.isArray(userData.permissions) && userData.permissions.length > 0) {
-              fetchedPermissions.value = userData.permissions
-              if (authStore.setPermissions) {
-                authStore.setPermissions(userData.permissions)
-              }
-            } else {
-              await fetchRolePermissions(currentUserRole.value)
-            }
-          }
-        } else {
-          currentUserName.value = 'User (No Profile)'
-        }
-      } catch (error) {
-        console.error('Error fetching user profile:', error)
-      }
-    } else {
-      currentUserName.value = 'Guest'
-      currentUserRole.value = ''
-      fetchedPermissions.value = []
-      router.replace('/')
-    }
-  })
+// Get Current Role/Permissions directly from Store (reactive)
+const currentUserRole = computed(() => authStore.user?.role || '')
+const isSuperAdmin = computed(() => {
+  const role = currentUserRole.value.toLowerCase()
+  return role === 'admin' || role === 'superadmin'
 })
-
-const fetchRolePermissions = async (roleName) => {
-  try {
-    const roleRef = doc(db, 'roles', roleName)
-    const roleSnap = await getDoc(roleRef)
-
-    if (roleSnap.exists()) {
-      fetchedPermissions.value = roleSnap.data().permissions || []
-
-      if (authStore.setPermissions) {
-        authStore.setPermissions(fetchedPermissions.value)
-      }
-    } else {
-      console.warn(`Role definition for '${roleName}' not found in DB.`)
-      fetchedPermissions.value = []
-    }
-  } catch (e) {
-    console.error('Error fetching permissions', e)
-  }
-}
 
 const canAccess = (route) => {
   if (isSuperAdmin.value) return true
   if (!route.meta?.permissions && !route.meta?.roles) return true
 
+  // Role Check
   if (route.meta?.roles) {
     if (route.meta.roles.includes(currentUserRole.value)) return true
   }
 
+  // Permission Check
   if (route.meta?.permissions) {
-    const effectivePerms = Array.isArray(authStore.permissions) && authStore.permissions.length > 0
-      ? authStore.permissions
-      : fetchedPermissions.value
+    const effectivePerms = authStore.permissions || []
     const userPermsLower = effectivePerms.map((p) => String(p).toLowerCase())
+
     const hasPermission = route.meta.permissions.some((requiredPerm) => {
       const permLower = String(requiredPerm).toLowerCase()
       if (userPermsLower.includes(permLower)) return true
@@ -283,11 +182,32 @@ const onLogout = async () => {
 <style lang="scss">
 .q-item--active {
   color: $primary;
+  background: lighten($primary, 48%);
   font-weight: 600;
   border-radius: 8px;
-  background: lighten($primary, 45%);
+  position: relative;
+  &:before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 15%;
+    height: 70%;
+    width: 3px;
+    background: $primary;
+    border-radius: 0 4px 4px 0;
+  }
 }
+
 .q-item--active .q-icon {
   color: $primary;
+}
+
+.logo-container img {
+  border: 3px solid #f5f5f5;
+}
+
+.logout-btn:hover {
+  background: #fff5f5 !important;
+  border-color: $negative !important;
 }
 </style>

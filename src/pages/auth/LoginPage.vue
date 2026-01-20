@@ -88,7 +88,7 @@ import { useQuasar } from 'quasar'
 // 1. Import Stores
 import { useSystemSettingsStore } from 'src/stores/systemSettingsStore'
 // Ensure this path points to the new store file we created above
-import { useAuthStore } from 'src/stores/useAuthStore'
+import { useAuthStore } from 'src/features/index'
 
 // 2. Firebase Imports
 import { signInWithEmailAndPassword } from 'firebase/auth'

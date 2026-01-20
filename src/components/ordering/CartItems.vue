@@ -26,31 +26,45 @@
             <q-item-section avatar>
               <q-avatar rounded size="80px" color="grey-2">
                 <q-img
-                  v-if="item.product?.image"
-                  :src="item.product.image"
+                  :src="item.product?.image || item.image || ''"
                   ratio="1"
                   class="rounded-borders"
-                />
-                <q-icon v-else name="fastfood" color="grey-4" size="40px" />
+                  style="height: 100%; width: 100%"
+                >
+                  <template v-slot:loading>
+                    <div class="text-grey-4 flex flex-center full-height">
+                      <q-spinner size="20px" />
+                    </div>
+                  </template>
+
+                  <template v-slot:error>
+                    <div class="absolute-full flex flex-center bg-grey-2 text-grey-4">
+                      <q-icon name="fastfood" size="40px" />
+                    </div>
+                  </template>
+                </q-img>
               </q-avatar>
             </q-item-section>
-
             <q-item-section class="column justify-between" style="min-height: 80px">
               <div>
                 <div class="text-h6 text-weight-bold text-grey-9 lh-tight">
-                  {{ item.product?.productName || 'Unknown' }}
+                  {{ item.product?.productName || item.productName || 'Unknown' }}
                 </div>
                 <div class="text-caption text-grey-6">
-                  {{ item.product?.productCategory || 'General' }}
+                  {{ item.product?.productCategory || item.category || 'General' }}
                 </div>
               </div>
 
               <div class="row items-baseline q-mt-sm">
                 <span class="text-h6 text-primary text-weight-bolder">
-                  ₱{{ ((item.product?.productPrice || 0) * item.quantity).toLocaleString() }}
+                  ₱{{
+                    (
+                      (item.product?.productPrice || item.price || 0) * item.quantity
+                    ).toLocaleString()
+                  }}
                 </span>
                 <span class="text-caption text-grey-5 q-ml-xs">
-                  (₱{{ item.product?.productPrice }} ea)
+                  (₱{{ item.product?.productPrice || item.price || 0 }} ea)
                 </span>
               </div>
             </q-item-section>
@@ -120,7 +134,7 @@ defineEmits(['update-quantity', 'remove-item'])
   display: flex;
   flex-direction: column;
   position: relative;
-  overflow: hidden; /* Important for scroll area */
+  overflow: hidden;
 }
 .lh-tight {
   line-height: 1.1;
