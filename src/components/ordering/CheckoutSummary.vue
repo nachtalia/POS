@@ -1,309 +1,354 @@
 <template>
-  <div class="checkout-summary q-pa-md bg-white">
-    <div class="q-mb-md">
-      <div class="text-subtitle1 text-grey-8 q-mb-sm">Order Summary</div>
+  <div class="checkout-summary bg-white">
+    <div class="q-px-md q-pt-md q-pb-sm">
+      <div class="row items-center justify-between q-mb-xs">
+        <span class="text-caption text-grey-7">Subtotal</span>
+        <span class="text-subtitle2 text-grey-9">₱{{ formatPrice(subtotal) }}</span>
+      </div>
 
-      <div class="q-pa-sm bg-grey-1 rounded-borders">
-        <div class="row justify-between items-center q-pb-xs">
-          <span class="text-grey-7">Subtotal</span>
-          <span class="text-weight-medium">₱{{ formatPrice(subtotal) }}</span>
-        </div>
-        <div class="row q-col-gutter-sm q-pt-sm">
-          <div class="col-12 col-sm-6">
+      <div class="row items-center justify-between q-mb-xs" style="height: 28px">
+        <span class="text-caption text-grey-7">Tax</span>
+        <div class="row items-center">
+          <div class="row items-center bg-grey-1 rounded-borders q-px-xs q-mr-sm transition-bg">
             <q-input
               v-model.number="taxValue"
-              outlined
-              dense
               type="number"
-              min="0"
-              label="Tax (%)"
-              bg-color="white"
-              clearable
-            >
-              <template v-slot:prepend>
-                <q-icon name="percent" class="text-grey-6" />
-              </template>
-            </q-input>
-          </div>
-        </div>
-        <div class="row justify-between items-center q-py-xs">
-          <span class="text-grey-7">
-            Tax
-            <span>({{ (Number(taxValue) || 0).toFixed(0) }}%)</span>
-          </span>
-          <span>₱{{ formatPrice(taxAmount) }}</span>
-        </div>
-        <div class="row q-col-gutter-sm q-pt-sm">
-          <div class="col-12 col-sm-6">
-            <q-select
-              v-model="discountMode"
-              :options="amountOrPercentOptions"
-              outlined
               dense
-              label="Discount Mode"
-              emit-value
-              map-options
-              bg-color="white"
-            >
-              <template v-slot:prepend>
-                <q-icon name="sell" class="text-grey-6" />
-              </template>
-            </q-select>
-          </div>
-          <div class="col-12 col-sm-6">
-            <q-input
-              v-model.number="discountValue"
-              outlined
-              dense
-              type="number"
+              borderless
+              class="no-padding text-center"
+              input-class="text-center text-primary text-weight-bold text-caption"
+              style="width: 35px; height: 24px"
               min="0"
-              :label="discountMode === 'percent' ? 'Discount (%)' : 'Discount (₱)'"
-              bg-color="white"
-              clearable
-            >
-              <template v-slot:prepend>
-                <q-icon name="percent" class="text-grey-6" v-if="discountMode === 'percent'" />
-                <q-icon name="attach_money" class="text-grey-6" v-else />
-              </template>
-            </q-input>
+            />
+            <span class="text-caption text-grey-6" style="font-size: 10px">%</span>
           </div>
-        </div>
-        <div class="row justify-between items-center q-pt-xs">
-          <span class="text-grey-7">
-            Discount
-            <span v-if="discountMode === 'percent'"
-              >({{ (Number(discountValue) || 0).toFixed(0) }}%)</span
-            >
+          <span class="text-caption text-grey-8" style="min-width: 60px; text-align: right">
+            + ₱{{ formatPrice(taxAmount) }}
           </span>
-          <span class="text-green">-₱{{ formatPrice(discountAmount) }}</span>
         </div>
       </div>
 
-      <q-separator class="q-my-md" />
+      <div class="row items-center justify-between q-mb-sm" style="height: 28px">
+        <div class="row items-center cursor-pointer" @click="toggleDiscountMode">
+          <span class="text-caption text-grey-7">Disc.</span>
+          <q-icon
+            name="swap_horiz"
+            size="12px"
+            class="q-ml-xs text-orange-8"
+            style="opacity: 0.7"
+          />
+        </div>
+
+        <div class="row items-center">
+          <div class="row items-center bg-grey-1 rounded-borders q-px-xs q-mr-sm transition-bg">
+            <span v-if="discountMode === 'amount'" class="text-caption text-grey-6 q-mr-xs">₱</span>
+            <q-input
+              v-model.number="discountValue"
+              type="number"
+              dense
+              borderless
+              class="no-padding text-center"
+              input-class="text-center text-orange-8 text-weight-bold text-caption"
+              style="width: 35px; height: 24px"
+              min="0"
+            />
+            <span
+              v-if="discountMode === 'percent'"
+              class="text-caption text-grey-6"
+              style="font-size: 10px"
+              >%</span
+            >
+          </div>
+          <span
+            class="text-caption text-orange-9 text-weight-medium"
+            style="min-width: 60px; text-align: right"
+          >
+            - ₱{{ formatPrice(discountAmount) }}
+          </span>
+        </div>
+      </div>
+
+      <q-separator class="q-my-sm" />
 
       <div class="row justify-between items-center">
-        <div>
-          <div class="text-h5 text-weight-bold text-grey-9">Total</div>
-          <div class="text-caption text-grey-6">Including all taxes</div>
-        </div>
-        <div class="text-right">
-          <div class="text-h3 text-primary text-weight-bolder">₱{{ formatPrice(totalAmount) }}</div>
-          <div class="text-caption text-grey-6">{{ totalItems }} items</div>
-        </div>
+        <span class="text-subtitle1 text-grey-9 text-weight-bold">Total</span>
+        <span class="text-h5 text-primary text-weight-bolder">₱{{ formatPrice(totalAmount) }}</span>
       </div>
     </div>
 
-    <div class="q-pa-sm bg-grey-1 rounded-borders q-mb-md">
-      <div class="row q-col-gutter-sm items-center">
-        <div class="col-12 col-sm-6">
+    <div class="q-px-md q-pb-md">
+      <div class="row q-col-gutter-sm q-mb-md">
+        <div class="col-5">
           <q-select
             v-model="paymentMode"
             :options="paymentOptions"
             outlined
             dense
-            label="Payment Mode"
-            emit-value
-            map-options
-            bg-color="white"
-          >
-            <template v-slot:prepend>
-              <q-icon name="payments" class="text-grey-6" />
-            </template>
-          </q-select>
+            options-dense
+            label="Pay Via"
+            class="bg-white"
+            behavior="menu"
+            hide-bottom-space
+          />
         </div>
-        <div class="col-12 col-sm-6">
+        <div class="col-7">
           <q-input
             v-model.number="amountPaid"
             outlined
             dense
             type="number"
-            min="0"
-            label="Amount Paid"
-            bg-color="white"
-            :hint="`₱${formatPrice(amountPaid)}`"
-            clearable
+            label="Cash Received"
+            class="bg-white"
+            input-class="text-right text-weight-bold text-primary font-size-16"
+            hide-bottom-space
+            @focus="$event.target.select()"
+            placeholder="0.00"
           >
             <template v-slot:prepend>
-              <q-icon name="attach_money" class="text-grey-6" />
+              <span class="text-caption text-grey-5">₱</span>
             </template>
           </q-input>
         </div>
       </div>
-      <div class="row justify-between items-center q-mt-sm">
-        <span class="text-grey-7">Change</span>
-        <span class="text-positive text-weight-medium">₱{{ formatPrice(change) }}</span>
+
+      <div class="row q-col-gutter-sm">
+        <div class="col-4">
+          <q-btn
+            outline
+            color="negative"
+            class="full-width"
+            label="VOID"
+            icon="delete_forever"
+            @click="handleVoid"
+            :disable="loading || cartLength === 0"
+            style="border-radius: 8px; height: 48px"
+          />
+        </div>
+
+        <div class="col-8">
+          <q-btn
+            unelevated
+            color="primary"
+            class="full-width shadow-1"
+            @click="openPaymentModal"
+            :loading="loading"
+            :disable="cartLength === 0"
+            style="border-radius: 8px; height: 48px"
+          >
+            <div class="column items-center" style="line-height: 1.1">
+              <span class="text-weight-bold" style="font-size: 0.9rem">PROCEED PAYMENT</span>
+              <span class="text-caption text-white" style="opacity: 0.8">
+                ₱{{ formatPrice(totalAmount) }}
+              </span>
+            </div>
+          </q-btn>
+        </div>
       </div>
     </div>
 
-    <div class="row q-col-gutter-sm">
-      <div class="col-6">
-        <q-btn
-          outline
-          color="grey-8"
-          label="Clear All"
-          icon="delete_sweep"
-          class="full-width"
-          @click="$emit('clear-cart')"
-          :disable="loading"
-        />
-      </div>
-      <div class="col-6">
-        <q-btn
-          unelevated
-          color="primary"
-          class="full-width"
-          size="lg"
-          @click="handlePayNow"
-          :loading="loading"
-          :disable="cartLength === 0"
-        >
-          <q-icon name="payments" class="q-mr-sm" />
-          Pay Now
-          <template v-slot:loading>
-            <q-spinner-hourglass class="on-left" />
-            Processing...
-          </template>
-        </q-btn>
-      </div>
-    </div>
+    <q-dialog v-model="showPaymentDialog" persistent>
+      <q-card style="min-width: 350px; max-width: 450px">
+        <q-card-section class="bg-primary text-white q-py-sm">
+          <div class="text-h6">Confirm Order</div>
+        </q-card-section>
 
-    <div class="row q-col-gutter-sm q-mt-sm">
-      <div class="col-12">
-        <q-btn
-          flat
-          color="primary"
-          label="Save as Draft"
-          icon="save"
-          class="full-width"
-          @click="$emit('save-draft', { total: totalAmount, items: totalItems })"
-          :disable="loading || cartLength === 0"
-        />
-      </div>
-    </div>
+        <q-card-section class="q-pt-lg">
+          <div class="column items-center q-gutter-y-md">
+            <div class="row full-width justify-between text-subtitle1">
+              <span class="text-grey-7">Total Due:</span>
+              <span class="text-weight-bold">₱{{ formatPrice(totalAmount) }}</span>
+            </div>
+
+            <div class="row full-width justify-between text-subtitle1">
+              <span class="text-grey-7">Paid Amount:</span>
+              <span class="text-weight-bold">₱{{ formatPrice(amountPaid) }}</span>
+            </div>
+
+            <q-separator class="full-width" />
+
+            <div class="column items-center">
+              <span class="text-caption text-uppercase text-grey-6">Change Due</span>
+              <span class="text-h3 text-positive text-weight-bolder">
+                ₱{{ formatPrice(change) }}
+              </span>
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-pa-md bg-grey-1">
+          <q-btn flat label="Back" color="grey-8" v-close-popup />
+          <q-btn
+            unelevated
+            color="primary"
+            label="COMPLETE ORDER"
+            size="lg"
+            icon="print"
+            @click="completeOrder"
+            :loading="loading"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, onMounted } from 'vue' // Removed 'watch' import
 import { useOrderStore } from 'src/stores/orderStore'
+import { useSystemSettingsStore } from 'src/stores/systemSettingsStore'
+import { useQuasar } from 'quasar'
 
-const orderStore = useOrderStore()
+const $q = useQuasar()
 
+// --- Props & Emits ---
 const props = defineProps({
-  subtotal: {
-    type: Number,
-    required: true,
-    default: 0,
-  },
-  taxRate: {
-    type: Number,
-    default: 0.08, // Example: Fetch this from a Firestore 'Settings' collection in the parent
-  },
-  discountRate: {
-    type: Number,
-    default: 0.0,
-  },
-  cartLength: {
-    type: Number,
-    default: 0,
-  },
-  customerName: {
-    type: String,
-    default: '',
-  },
-  totalItems: {
-    type: Number,
-    default: 0,
-  },
+  subtotal: { type: Number, default: 0 },
+  cartLength: { type: Number, default: 0 },
+  totalItems: { type: Number, default: 0 },
 })
 
-const emit = defineEmits(['clear-cart', 'pay-now', 'save-draft'])
+const emit = defineEmits(['pay-now', 'clear-cart'])
 
-// --- Computed Properties ---
+// --- Stores ---
+const orderStore = useOrderStore()
+const settingsStore = useSystemSettingsStore()
 
-// Dynamic tax/discount controls
-const amountOrPercentOptions = [
-  { label: 'Percent (%)', value: 'percent' },
-  { label: 'Amount (₱)', value: 'amount' },
-]
-import { ref } from 'vue'
-const taxValue = ref((props.taxRate || 0) * 100)
+// --- State ---
+const loading = computed(() => orderStore.loading)
+const taxValue = ref(0)
 const discountMode = ref('percent')
-const discountValue = ref((props.discountRate || 0) * 100)
+const discountValue = ref(0)
+const paymentMode = ref('Cash')
+const amountPaid = ref(0) // Initialize as 0
+const showPaymentDialog = ref(false)
 
-const taxAmount = computed(() => {
-  const sub = props.subtotal || 0
-  const val = Number(taxValue.value || 0)
-  return (sub * Math.max(0, val)) / 100
+const paymentOptions = ['Cash', 'GCash', 'Card', 'Bank Transfer']
+
+// --- Initialization ---
+onMounted(async () => {
+  await settingsStore.fetchSettings()
+  if (settingsStore.settings) {
+    taxValue.value = settingsStore.settings.defaultTax || 0
+    discountValue.value = settingsStore.settings.defaultDiscount || 0
+  }
 })
+
+// --- Computeds ---
+const taxAmount = computed(() => (props.subtotal * (taxValue.value || 0)) / 100)
 
 const discountAmount = computed(() => {
-  const sub = props.subtotal || 0
-  const val = Number(discountValue.value || 0)
-  if (discountMode.value === 'percent') return (sub * Math.max(0, val)) / 100
-  return Math.max(0, val)
+  if (discountMode.value === 'percent') {
+    return (props.subtotal * (discountValue.value || 0)) / 100
+  }
+  return Number(discountValue.value || 0)
 })
 
 const totalAmount = computed(() => {
-  const sub = props.subtotal || 0
-  // JavaScript math safety (prevents 0.1 + 0.2 = 0.300000004)
-  const result = sub + taxAmount.value - discountAmount.value
-  return Math.max(0, result) // Prevent negative totals
+  const result = props.subtotal + taxAmount.value - discountAmount.value
+  return Math.max(0, result)
 })
 
-const loading = computed(() => orderStore.loading)
+const change = computed(() => Math.max(0, amountPaid.value - totalAmount.value))
+
+// --- Note: The watcher that auto-filled amountPaid is removed here ---
 
 // --- Methods ---
-
-// Helper for display
 const formatPrice = (val) => {
-  return (val || 0).toFixed(2)
+  return (Number(val) || 0).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
 }
 
-// --- Payment State & Derived ---
-const paymentOptions = [
-  { label: 'Cash', value: 'Cash' },
-  { label: 'GCash', value: 'GCash' },
-  { label: 'Card', value: 'Card' },
-]
-const paymentMode = ref('Cash')
-const amountPaid = ref(totalAmount.value)
-const change = computed(() => {
-  const paid = Number(amountPaid.value || 0)
-  const total = Number(totalAmount.value || 0)
-  return Math.max(0, paid - total)
-})
+const toggleDiscountMode = () => {
+  discountMode.value = discountMode.value === 'percent' ? 'amount' : 'percent'
+}
 
-const handlePayNow = () => {
-  // IMPORTANT: We emit the calculated values to the parent.
-  // The parent will take this object and write it directly to Firestore.
-  // This ensures the Database matches the UI exactly.
+const handleVoid = () => {
+  $q.dialog({
+    title: 'Void Transaction',
+    message: 'Are you sure you want to void this entire order?',
+    cancel: true,
+    persistent: true,
+    ok: { label: 'Void Order', color: 'negative', flat: true },
+  }).onOk(() => {
+    emit('clear-cart')
+    // Reset inputs
+    amountPaid.value = 0
+  })
+}
+
+const openPaymentModal = () => {
+  // Logic: Ensure payment is sufficient
+  if (amountPaid.value < totalAmount.value) {
+    $q.notify({
+      type: 'warning',
+      message: `Insufficient payment. Need ₱${formatPrice(totalAmount.value - amountPaid.value)} more.`,
+    })
+    return
+  }
+  showPaymentDialog.value = true
+}
+
+const completeOrder = async () => {
   const orderSummary = {
-    subtotal: Number(props.subtotal.toFixed(2)),
-    taxAmount: Number(taxAmount.value.toFixed(2)),
-    discountAmount: Number(discountAmount.value.toFixed(2)),
-    totalAmount: Number(totalAmount.value.toFixed(2)),
+    subtotal: props.subtotal,
+    taxAmount: taxAmount.value,
+    discountAmount: discountAmount.value,
+    totalAmount: totalAmount.value,
     itemCount: props.totalItems,
-    taxMode: 'percent',
-    taxValue: Number((taxValue.value || 0).toFixed(2)),
-    discountMode: discountMode.value,
-    discountValue: Number((discountValue.value || 0).toFixed(2)),
+    taxDetails: { value: taxValue.value, type: 'percent' },
+    discountDetails: { value: discountValue.value, type: discountMode.value },
     paymentMode: paymentMode.value,
-    amountPaid: Number(amountPaid.value.toFixed(2)),
-    change: Number(change.value.toFixed(2)),
+    amountPaid: amountPaid.value,
+    change: change.value,
   }
 
   emit('pay-now', orderSummary)
+  showPaymentDialog.value = false
+  printReceipt(orderSummary)
+
+  // Optional: Reset amountPaid after successful order
+  amountPaid.value = 0
+}
+
+const printReceipt = (summary) => {
+  console.log('Printing Receipt...', summary)
+  $q.notify({
+    type: 'positive',
+    icon: 'print',
+    message: 'Order Completed. Printing Receipt...',
+    position: 'top',
+  })
 }
 </script>
 
 <style scoped>
 .checkout-summary {
-  border-top: 1px solid #e0e0e0;
-  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
-  /* Ensure it sticks to bottom on mobile if needed */
   position: sticky;
   bottom: 0;
-  z-index: 10;
+  z-index: 100;
+  border-top: 1px solid #e0e0e0;
+}
+
+.transition-bg {
+  transition: background-color 0.2s ease;
+}
+.transition-bg:hover,
+.transition-bg:focus-within {
+  background-color: #e3e3e3 !important;
+}
+
+:deep(input::-webkit-outer-spin-button),
+:deep(input::-webkit-inner-spin-button) {
+  -webkit-appearance: none;
+  margin: 0;
+}
+:deep(input[type='number']) {
+  -moz-appearance: textfield;
+}
+
+:deep(.font-size-16) {
+  font-size: 1.1rem !important;
 }
 </style>

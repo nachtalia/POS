@@ -127,9 +127,49 @@
 
           <div class="col-12 col-md-4 column no-wrap">
             <div class="bg-white rounded-borders shadow-2 column fit overflow-hidden">
-              <div class="q-pa-md bg-grey-1 border-bottom">
-                <customer-details v-model="customer" />
+              <div
+                class="row items-center justify-between q-px-md q-py-sm border-bottom bg-white z-top"
+              >
+                <div class="row items-center">
+                  <div class="text-subtitle2 text-weight-bold row items-center">
+                    <q-icon name="shopping_bag" color="primary" class="q-mr-sm" size="18px" />
+                    Current Order
+                  </div>
+                  <q-badge color="grey-2" text-color="grey-8" class="q-ml-sm text-weight-bold">
+                    {{ totalItems }}
+                  </q-badge>
+                </div>
+
+                <q-btn
+                  flat
+                  dense
+                  rounded
+                  no-caps
+                  size="sm"
+                  :color="showCustomerDetails ? 'grey-7' : 'primary'"
+                  :bg-color="showCustomerDetails ? 'transparent' : 'blue-1'"
+                  class="q-px-md transition-generic"
+                  @click="showCustomerDetails = !showCustomerDetails"
+                >
+                  <div class="row items-center">
+                    <span class="q-mr-xs">{{
+                      showCustomerDetails ? 'Hide Details' : 'Customer Info'
+                    }}</span>
+                    <q-icon
+                      :name="showCustomerDetails ? 'expand_less' : 'person_add'"
+                      size="14px"
+                    />
+                  </div>
+                </q-btn>
               </div>
+
+              <q-slide-transition>
+                <div v-show="showCustomerDetails">
+                  <div class="q-pa-md bg-grey-1 border-bottom">
+                    <customer-details v-model="customer" />
+                  </div>
+                </div>
+              </q-slide-transition>
 
               <q-scroll-area class="col bg-white">
                 <q-list separator class="q-pa-sm">
@@ -388,7 +428,6 @@
 </template>
 
 <script setup>
-// ... (Keep your existing script exactly as it is)
 import { ref, computed, reactive, onMounted, onUnmounted } from 'vue'
 import { date, useQuasar } from 'quasar'
 import { db } from 'src/services/firebase'
@@ -401,11 +440,11 @@ import CustomerDetails from 'src/components/ordering/CustomerDetails.vue'
 import CheckoutSummary from 'src/components/ordering/CheckoutSummary.vue'
 import ReceiptDialog from 'src/components/ordering/ReceiptDialog.vue'
 
-// (Copy the rest of your script setup logic here exactly as provided in the prompt)
-// For brevity in the answer, I am assuming the script logic remains 100% identical.
-// Just make sure to copy everything from `const $q = useQuasar()` down to `onUnmounted`.
-
-// ... RE-INSERT SCRIPT LOGIC HERE ...
+const $q = useQuasar()
+const addonStore = useAddonStore()
+const orderStore = useOrderStore()
+const showReceipt = ref(false)
+const receiptOrder = ref(null)
 
 // Props & Emits
 defineProps({
@@ -420,6 +459,9 @@ const cart = ref([])
 const products = ref([])
 const loadingProducts = ref(true)
 let unsubscribeProducts = null
+
+// --- NEW: Toggle State for Customer Details ---
+const showCustomerDetails = ref(true) // Defaults to shown
 
 const customer = ref({
   name: '',
@@ -444,10 +486,9 @@ const discountRate = 0.05
 // --- Computed Properties ---
 
 const currentDate = computed(() => {
-  return date.formatDate(Date.now(), 'hh:mm A') // Shortened for UI
+  return date.formatDate(Date.now(), 'hh:mm A')
 })
 
-// Dynamically generate categories based on available products
 const dynamicCategories = computed(() => {
   const cats = new Set(['All'])
   products.value.forEach((p) => {
@@ -684,12 +725,6 @@ onMounted(() => {
 onUnmounted(() => {
   if (unsubscribeProducts) unsubscribeProducts()
 })
-
-const $q = useQuasar()
-const addonStore = useAddonStore()
-const orderStore = useOrderStore()
-const showReceipt = ref(false)
-const receiptOrder = ref(null)
 </script>
 
 <style scoped lang="scss">
