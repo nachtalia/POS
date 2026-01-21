@@ -153,7 +153,6 @@
                   />
                 </q-td>
               </template>
-              <!-- removed stock cell -->
             </q-table>
 
             <div v-if="selectedInventoryTab === 'products' && selectedProductView === 'catalog'">
@@ -261,6 +260,7 @@
       </div>
     </div>
 
+    <!-- Add/Edit Product Dialog -->
     <q-dialog v-model="showAddProductDialog" persistent>
       <q-card style="min-width: 400px">
         <q-card-section>
@@ -306,8 +306,6 @@
               </div>
             </div>
 
-            <!-- removed stock quantity input -->
-
             <q-select
               v-model="productForm.productCategory"
               :options="categoriesForForm"
@@ -316,6 +314,7 @@
               dense
               :rules="[(val) => !!val || 'Category is required']"
             />
+
             <div class="row q-col-gutter-sm items-center">
               <div class="col-12">
                 <q-file
@@ -324,16 +323,46 @@
                   outlined
                   dense
                   label="Product Image"
+                  @update:model-value="handleImageSelect"
+                  clearable
                 >
                   <template v-slot:prepend><q-icon name="image" /></template>
-                  <template v-slot:append v-if="productImageFile">
-                    <q-icon name="close" class="cursor-pointer" @click="clearImage" />
-                  </template>
                 </q-file>
               </div>
-              <div class="col-12" v-if="productImagePreview">
-                <q-img :src="productImagePreview" style="height: 140%" class="rounded-borders" />
+
+              <!-- Image Preview Section -->
+              <div class="col-12" v-if="productImagePreview || productForm.productImage">
+                <div class="text-caption text-grey-7 q-mb-xs">Image Preview:</div>
+                <div
+                  class="flex flex-center q-pa-sm"
+                  style="border: 1px solid #e0e0e0; border-radius: 8px; background: #f5f5f5"
+                >
+                  <q-img
+                    :src="productImagePreview || productForm.productImage"
+                    style="max-height: 200px; max-width: 100%; object-fit: contain"
+                    class="rounded-borders"
+                    spinner-color="primary"
+                  >
+                    <template v-slot:error>
+                      <div class="absolute-full flex flex-center bg-grey-3 text-grey">
+                        <q-icon name="image_not_supported" size="xl" />
+                      </div>
+                    </template>
+                  </q-img>
+                </div>
+                <div class="text-center q-mt-xs">
+                  <q-btn
+                    flat
+                    dense
+                    color="negative"
+                    icon="delete"
+                    label="Remove Image"
+                    size="sm"
+                    @click="clearImage"
+                  />
+                </div>
               </div>
+
               <div class="col-12">
                 <div class="text-subtitle2 q-mb-sm text-grey-8">Add-ons</div>
                 <q-select
@@ -571,7 +600,6 @@ const authStore = useAuthStore()
 
 const searchQuery = ref('')
 const selectedCategory = ref('All')
-// removed stock filtering
 const selectedInventoryTab = ref('products')
 const selectedProductView = ref('catalog')
 const placeholderImage = 'https://via.placeholder.com/300?text=No+Image'
@@ -582,7 +610,6 @@ const showAddAddonDialog = ref(false)
 const editingAddon = ref(null)
 const showAddAddonCategoryDialog = ref(false)
 
-// Reference to the form element
 const myForm = ref(null)
 const addonFormRef = ref(null)
 
@@ -630,16 +657,59 @@ const productImagePreview = ref('')
 const clearImage = () => {
   productImageFile.value = null
   productImagePreview.value = ''
+  productForm.productImage = ''
+}
+
+const handleImageSelect = (file) => {
+  if (!file) {
+    productImagePreview.value = ''
+    return
+  }
+
+  // Check if file is an image
+  if (!file.type.startsWith('image/')) {
+    $q.notify({
+      color: 'negative',
+      message: 'Please select an image file',
+      icon: 'warning',
+    })
+    productImageFile.value = null
+    productImagePreview.value = ''
+    return
+  }
+
+  // Check file size (limit to 5MB)
+  if (file.size > 5 * 1024 * 1024) {
+    $q.notify({
+      color: 'negative',
+      message: 'Image size should be less than 5MB',
+      icon: 'warning',
+    })
+    productImageFile.value = null
+    productImagePreview.value = ''
+    return
+  }
+
+  // Create preview
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    productImagePreview.value = e.target.result
+  }
+  reader.onerror = () => {
+    $q.notify({
+      color: 'negative',
+      message: 'Error reading image file',
+      icon: 'error',
+    })
+    productImageFile.value = null
+    productImagePreview.value = ''
+  }
+  reader.readAsDataURL(file)
 }
 
 watch(productImageFile, (file) => {
-  const chosen = Array.isArray(file) ? file[0] : file
-  if (chosen && chosen instanceof File) {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      productImagePreview.value = e.target.result
-    }
-    reader.readAsDataURL(chosen)
+  if (file) {
+    handleImageSelect(file)
   } else {
     productImagePreview.value = ''
   }
@@ -664,7 +734,6 @@ const columns = [
     sortable: true,
     format: (val) => `₱${Number(val).toFixed(2)}`,
   },
-  // removed stock column
   { name: 'actions', label: 'Actions', field: 'actions', align: 'center' },
 ]
 const addonColumns = [
@@ -695,7 +764,6 @@ const categoryOptions = computed(() => [
   ...(categoryStore.categories || []).map((c) => c.name),
 ])
 const categoriesForForm = computed(() => (categoryStore.categories || []).map((c) => c.name))
-// removed stock options
 const addonCategoryOptions = computed(() => (addonStore.addonCategories || []).map((c) => c.name))
 const statusOptions = ['Available', 'Unavailable']
 const addonOptions = computed(() => {
@@ -717,7 +785,6 @@ const formatOptions = [
 ]
 const exportUseTableFilters = ref(true)
 const exportCategory = ref('All')
-// removed export stock filter
 const specificAddonsHint = computed(() => {
   const cats = productForm.allowedAddonCategories || []
   const count = addonOptions.value.length
@@ -730,7 +797,6 @@ const filteredProducts = computed(() => {
   let items = productStore.products || []
   if (selectedCategory.value !== 'All')
     items = items.filter((p) => p.productCategory === selectedCategory.value)
-  // removed stock filtering
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
     items = items.filter(
@@ -789,6 +855,11 @@ const openEditDialog = (product) => {
       ? [...product.allowedAddonCategories]
       : [],
   })
+
+  // Clear any previous image file and preview
+  productImageFile.value = null
+  productImagePreview.value = ''
+
   showAddProductDialog.value = true
 }
 
@@ -804,16 +875,12 @@ const openEditAddonDialog = (addon) => {
   showAddAddonDialog.value = true
 }
 
-// 1. New wrapper function to trigger validation manually
 const submitForm = async () => {
-  // Triggers the :rules on all inputs
   const success = await myForm.value.validate()
 
   if (success) {
-    // If valid, proceed to save
     await handleSaveProduct()
   } else {
-    // If invalid, show a toast so the user knows why nothing happened
     $q.notify({
       color: 'negative',
       message: 'Please fill in all required fields.',
@@ -824,9 +891,11 @@ const submitForm = async () => {
 
 const handleSaveProduct = async () => {
   try {
+    // Use the preview image if a new image was selected
     if (productImagePreview.value) {
       productForm.productImage = productImagePreview.value
     }
+
     if (editingProduct.value) {
       await productStore.updateProduct(editingProduct.value.id, { ...productForm })
       $q.notify({ color: 'positive', message: 'Product updated successfully', icon: 'check' })
@@ -934,7 +1003,6 @@ const getRowsForExport = () => {
   if (exportCategory.value !== 'All') {
     items = items.filter((p) => p.productCategory === exportCategory.value)
   }
-  // removed export stock filter
   return items
 }
 
@@ -997,10 +1065,6 @@ const exportInventoryPDF = () => {
               <th>Category</th>
               <th>Price</th>
               <th>Cost</th>
-<<<<<<< HEAD
-=======
-
->>>>>>> 652618933f7dc5e9c1c0875e6e7f01e21d999180
             </tr>
           </thead>
           <tbody>
@@ -1048,7 +1112,6 @@ const executeExport = () => {
     exportInventoryCSV()
   }
 }
-// Inside InventoryPage.vue <script setup>
 
 const handleSaveCategory = async () => {
   try {
@@ -1061,24 +1124,18 @@ const handleSaveCategory = async () => {
       return
     }
 
-    // 1. Attempt to add to Firebase
     await categoryStore.addCategory({ ...categoryForm })
 
-    // 2. Success Feedback
     $q.notify({
       color: 'positive',
       message: 'Category created successfully',
       icon: 'check',
     })
 
-    // 3. Clear and Close
     closeCategoryDialog()
-
-    // 4. (Optional) Refresh list immediately if your store doesn't auto-update
     await categoryStore.fetchCategories()
   } catch (e) {
     console.error(e)
-    // 5. SHOW THE ERROR TO THE USER
     $q.notify({
       color: 'negative',
       message: 'Permission denied. Check your console or Firestore Rules.',
@@ -1115,6 +1172,7 @@ const closeAddonCategoryDialog = () => {
   Object.assign(addonCategoryForm, { name: '', description: '' })
 }
 </script>
+
 <style scoped>
 .catalog-card .q-card__section {
   padding: 8px;
@@ -1124,5 +1182,12 @@ const closeAddonCategoryDialog = () => {
 }
 .catalog-card .text-weight-bold {
   font-size: 13px;
+}
+
+/* Responsive adjustments for the modal */
+@media (max-width: 600px) {
+  .q-card {
+    min-width: 90vw !important;
+  }
 }
 </style>

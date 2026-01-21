@@ -1,6 +1,14 @@
 import { defineStore } from 'pinia'
 import { db } from '../services/firebase'
-import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, Timestamp } from 'firebase/firestore'
+import {
+  collection,
+  getDocs,
+  addDoc,
+  deleteDoc,
+  doc,
+  updateDoc,
+  Timestamp,
+} from 'firebase/firestore'
 import { Addon } from '../services/models/Addon'
 import { Category } from '../services/models/Category'
 import { logAudit } from '../services/auditService'
@@ -9,7 +17,7 @@ export const useAddonStore = defineStore('addonStore', {
   state: () => ({
     addons: [],
     addonCategories: [],
-    loading: false
+    loading: false,
   }),
 
   actions: {
@@ -17,7 +25,7 @@ export const useAddonStore = defineStore('addonStore', {
       this.loading = true
       try {
         const querySnapshot = await getDocs(collection(db, 'addons'))
-        this.addons = querySnapshot.docs.map(d => Addon.fromFirestore(d))
+        this.addons = querySnapshot.docs.map((d) => Addon.fromFirestore(d))
       } catch (e) {
         console.error('Error fetching addons:', e)
       } finally {
@@ -43,7 +51,7 @@ export const useAddonStore = defineStore('addonStore', {
           action: 'add',
           entityType: 'addonCategory',
           entityId: ref.id,
-          details: cat.toFirestore()
+          details: cat.toFirestore(),
         })
       } catch (e) {
         console.error('Error adding addon category:', e)
@@ -59,7 +67,7 @@ export const useAddonStore = defineStore('addonStore', {
           action: 'delete',
           entityType: 'addonCategory',
           entityId: id,
-          details: null
+          details: null,
         })
       } catch (e) {
         console.error('Error deleting addon category:', e)
@@ -77,7 +85,7 @@ export const useAddonStore = defineStore('addonStore', {
           action: 'add',
           entityType: 'addon',
           entityId: ref.id,
-          details: addon.toFirestore()
+          details: addon.toFirestore(),
         })
       } catch (e) {
         console.error('Error adding addon:', e)
@@ -88,9 +96,13 @@ export const useAddonStore = defineStore('addonStore', {
       try {
         const payload = { ...partial, updatedAt: Timestamp.now() }
         await updateDoc(doc(db, 'addons', id), payload)
-        const idx = this.addons.findIndex(a => a.id === id)
+        const idx = this.addons.findIndex((a) => a.id === id)
         if (idx !== -1) {
-          const updated = new Addon({ ...this.addons[idx], ...payload, updatedAt: payload.updatedAt })
+          const updated = new Addon({
+            ...this.addons[idx],
+            ...payload,
+            updatedAt: payload.updatedAt,
+          })
           this.addons[idx] = updated
         }
         await logAudit({
@@ -98,7 +110,7 @@ export const useAddonStore = defineStore('addonStore', {
           action: 'edit',
           entityType: 'addon',
           entityId: id,
-          details: payload
+          details: payload,
         })
       } catch (e) {
         console.error('Error updating addon:', e)
@@ -108,18 +120,18 @@ export const useAddonStore = defineStore('addonStore', {
     async deleteAddon(id) {
       try {
         await deleteDoc(doc(db, 'addons', id))
-        this.addons = this.addons.filter(a => a.id !== id)
+        this.addons = this.addons.filter((a) => a.id !== id)
         await logAudit({
           module: 'inventory',
           action: 'delete',
           entityType: 'addon',
           entityId: id,
-          details: null
+          details: null,
         })
       } catch (e) {
         console.error('Error deleting addon:', e)
         throw e
       }
-    }
-  }
+    },
+  },
 })
