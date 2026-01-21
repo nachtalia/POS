@@ -2,11 +2,13 @@ import { defineStore } from 'pinia'
 import { db } from '../services/firebase'
 import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, Timestamp } from 'firebase/firestore'
 import { Addon } from '../services/models/Addon'
+import { Category } from '../services/models/Category'
 import { logAudit } from '../services/auditService'
 
 export const useAddonStore = defineStore('addonStore', {
   state: () => ({
     addons: [],
+    addonCategories: [],
     loading: false
   }),
 
@@ -20,6 +22,48 @@ export const useAddonStore = defineStore('addonStore', {
         console.error('Error fetching addons:', e)
       } finally {
         this.loading = false
+      }
+    },
+    async fetchAddonCategories() {
+      try {
+        const snap = await getDocs(collection(db, 'addonCategories'))
+        this.addonCategories = snap.docs.map((d) => Category.fromFirestore(d))
+      } catch (e) {
+        console.error('Error fetching addon categories:', e)
+      }
+    },
+    async addAddonCategory(data) {
+      try {
+        const cat = new Category(data)
+        const ref = await addDoc(collection(db, 'addonCategories'), cat.toFirestore())
+        cat.id = ref.id
+        this.addonCategories.push(cat)
+        await logAudit({
+          module: 'inventory',
+          action: 'add',
+          entityType: 'addonCategory',
+          entityId: ref.id,
+          details: cat.toFirestore()
+        })
+      } catch (e) {
+        console.error('Error adding addon category:', e)
+        throw e
+      }
+    },
+    async deleteAddonCategory(id) {
+      try {
+        await deleteDoc(doc(db, 'addonCategories', id))
+        this.addonCategories = this.addonCategories.filter((c) => c.id !== id)
+        await logAudit({
+          module: 'inventory',
+          action: 'delete',
+          entityType: 'addonCategory',
+          entityId: id,
+          details: null
+        })
+      } catch (e) {
+        console.error('Error deleting addon category:', e)
+        throw e
       }
     },
     async addAddon(data) {
