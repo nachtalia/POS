@@ -24,9 +24,12 @@ jobs:
           VITE_APP_ID: ${{ secrets.VITE_APP_ID }}
           VITE_MEASUREMENT_ID: ${{ secrets.VITE_MEASUREMENT_ID }}
 
-      - name: Deploy to Firebase
+- name: Deploy to Firebase
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
-          repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_POINT_OF_SALE_F5706 }}'
+          repoToken: "${{ secrets.GITHUB_TOKEN }}"
+          # Use the token instead of the service account
+          firebaseServiceAccount: "" 
           projectId: point-of-sale-f5706
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
