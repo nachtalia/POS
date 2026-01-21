@@ -23,6 +23,7 @@
         icon="close"
         color="grey-7"
         @click="isCheckout = false"
+        :disable="isProcessing"
       />
     </div>
 
@@ -35,17 +36,7 @@
         bg-color="white"
         class="q-mb-sm"
       />
-      <div class="row q-col-gutter-xs">
-        <div class="col">
-          <q-input
-            v-model="localCustomer.address"
-            dense
-            outlined
-            label="Address"
-            bg-color="white"
-          />
-        </div>
-      </div>
+      <q-input v-model="localCustomer.address" dense outlined label="Address" bg-color="white" />
     </div>
 
     <q-scroll-area class="col bg-white">
@@ -92,7 +83,8 @@
                 dense
                 round
                 size="md"
-                icon="remove"
+                :icon="item.quantity === 1 ? 'delete' : 'remove'"
+                :color="item.quantity === 1 ? 'negative' : 'black'"
                 class="bg-white shadow-1"
                 @click="$emit('update-quantity', { index, delta: -1 })"
               />
@@ -107,80 +99,128 @@
               class="bg-red-1"
               size="md"
               @click="voidItem(index)"
+              :disable="isProcessing"
             />
           </q-item-section>
         </q-item>
       </q-list>
     </q-scroll-area>
 
-    <div class="bg-white shadow-up-3 q-pa-md">
-      <div v-if="isCheckout" class="q-mb-md bg-grey-1 q-pa-md rounded-borders border-dashed">
-        <q-input
-          v-model.number="cashReceived"
-          type="number"
-          outlined
-          label="Cash Received"
-          bg-color="white"
-          prefix="₱"
-          class="q-mb-sm text-h6"
-          autofocus
-          @keyup.enter="handleCompleteOrder"
-        />
-        <div
-          class="row justify-between text-subtitle1 text-weight-bold"
-          :class="change < 0 ? 'text-negative' : 'text-positive'"
-        >
-          <span>Change:</span>
-          <span>₱{{ Math.max(0, change).toFixed(2) }}</span>
+    <div class="bg-white shadow-up-3 q-pa-sm">
+      <div v-if="isCheckout" class="q-mb-sm bg-grey-1 q-pa-sm rounded-borders border-dashed">
+        <div class="q-mb-sm row justify-center">
+          <q-btn-toggle
+            v-model="paymentMethod"
+            toggle-color="primary"
+            color="white"
+            text-color="primary"
+            class="shadow-1 full-width"
+            spread
+            no-caps
+            rounded
+            unelevated
+            :options="[
+              { label: 'Cash', value: 'Cash', icon: 'payments' },
+              { label: 'G-Cash', value: 'G-Cash', icon: 'account_balance_wallet' },
+              { label: 'Bank', value: 'Bank Transfer', icon: 'account_balance' },
+            ]"
+          />
+        </div>
+
+        <div v-if="paymentMethod === 'Cash'" class="row items-center q-col-gutter-sm">
+          <div class="col">
+            <q-input
+              v-model.number="cashReceived"
+              type="number"
+              outlined
+              dense
+              label="Cash Received"
+              placeholder="0"
+              bg-color="white"
+              prefix="₱"
+              class="text-weight-bold"
+              autofocus
+              :disable="isProcessing"
+              @keyup.enter="handleCompleteOrder"
+            />
+          </div>
+          <div class="col-auto text-right">
+            <div class="text-caption text-grey-7">Change</div>
+            <div
+              class="text-subtitle1 text-weight-bolder"
+              :class="change < 0 ? 'text-negative' : 'text-positive'"
+            >
+              ₱{{ Math.max(0, change).toFixed(2) }}
+            </div>
+          </div>
         </div>
       </div>
 
       <div class="q-gutter-y-xs q-mb-md">
-        <div class="row justify-between text-grey-7">
-          <span>Subtotal</span>
-          <span>₱{{ subtotal.toFixed(2) }}</span>
+        <div class="row justify-between items-center q-mb-xs">
+          <div class="text-h6 text-primary text-weight-bolder">Total</div>
+          <div class="text-h6 text-primary text-weight-bolder">₱{{ finalTotal.toFixed(2) }}</div>
         </div>
-        <div class="row justify-between text-grey-7">
-          <span>Tax ({{ (taxRate * 100).toFixed(0) }}%)</span>
-          <span>₱{{ taxAmount.toFixed(2) }}</span>
+        <div class="row justify-end">
+          <q-btn
+            flat
+            dense
+            size="sm"
+            :icon="showTaxDetails ? 'expand_less' : 'expand_more'"
+            :label="showTaxDetails ? 'Hide Breakdown' : 'Show Breakdown'"
+            color="grey-6"
+            @click="showTaxDetails = !showTaxDetails"
+          />
         </div>
-        <div class="row justify-between text-negative" v-if="dbDiscount > 0">
-          <span>Discount</span>
-          <span>-₱{{ dbDiscount.toFixed(2) }}</span>
-        </div>
-        <q-separator class="q-my-xs" />
-        <div class="row justify-between text-h6 text-primary text-weight-bolder">
-          <span>Total</span>
-          <span>₱{{ finalTotal.toFixed(2) }}</span>
-        </div>
+        <q-slide-transition>
+          <div v-show="showTaxDetails" class="bg-grey-1 q-pa-sm rounded-borders text-caption">
+            <div class="row justify-between text-grey-8">
+              <span>Subtotal (Net of VAT)</span>
+              <span>₱{{ subtotal.toFixed(2) }}</span>
+            </div>
+            <div class="row justify-between text-grey-8">
+              <span>VAT ({{ (taxRate * 100).toFixed(0) }}%)</span>
+              <span>₱{{ taxAmount.toFixed(2) }}</span>
+            </div>
+            <div class="row justify-between text-negative" v-if="dbDiscount > 0">
+              <span>Discount</span>
+              <span>-₱{{ dbDiscount.toFixed(2) }}</span>
+            </div>
+          </div>
+        </q-slide-transition>
       </div>
 
       <div class="row q-gutter-sm">
         <q-btn
           v-if="isCheckout"
           flat
+          dense
           color="grey-7"
           icon="arrow_back"
           label="Back"
-          class="col-4"
+          class="col-3"
           @click="isCheckout = false"
+          :disable="isProcessing"
         />
         <q-btn
           v-else
           flat
+          dense
           color="negative"
           icon="delete"
           label="Clear"
-          class="col-4"
+          class="col-3"
           @click="$emit('clear-cart')"
+          :disable="isProcessing"
         />
 
         <q-btn
           :color="isCheckout ? 'positive' : 'primary'"
           :icon="isCheckout ? 'check_circle' : 'payments'"
-          :label="isCheckout ? 'Complete Order' : 'Pay Now'"
-          class="col-grow shadow-2"
-          :disable="cart.length === 0 || (isCheckout && cashReceived < finalTotal)"
+          :label="isProcessing ? 'Processing...' : isCheckout ? 'Complete' : 'Pay Now'"
+          class="col-grow shadow-1"
+          :loading="isProcessing"
+          :disable="cart.length === 0 || isCheckoutDisabled"
           @click="isCheckout ? handleCompleteOrder() : (isCheckout = true)"
         />
       </div>
@@ -194,91 +234,119 @@ import { db } from 'src/services/firebase'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { useQuasar } from 'quasar'
 
-const props = defineProps({
-  cart: Array,
-  imgMap: Object,
-  customer: Object,
-})
-
+const props = defineProps({ cart: Array, imgMap: Object, customer: Object })
 const emit = defineEmits(['update:customer', 'update-quantity', 'clear-cart', 'submit-order'])
 const $q = useQuasar()
 
-// --- State ---
+// State
 const isCheckout = ref(false)
-const cashReceived = ref(0)
-const taxRate = ref(0)
+const isProcessing = ref(false)
+const showTaxDetails = ref(false)
+const paymentMethod = ref('Cash')
+
+// UPDATED: Initialized as null so input is empty
+const cashReceived = ref(null)
+
+const taxRate = ref(0.1)
 const dbDiscount = ref(0)
 const localCustomer = ref({ ...props.customer })
-
 const PLACEHOLDER_IMG =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
 
-// --- Database Real-time Sync ---
+// DB Sync
 onMounted(() => {
-  // Syncing with collection: systemSettings | Document: cfuEV4yQICQAzB1aTnzQ
-  const settingsRef = doc(db, 'systemSettings', 'cfuEV4yQICQAzB1aTnzQ')
-  onSnapshot(settingsRef, (snapshot) => {
-    if (snapshot.exists()) {
-      const data = snapshot.data()
-      // Treating defaultTax (e.g. 60) as a percentage
-      taxRate.value = (data.defaultTax || 0) / 100
-      dbDiscount.value = data.defaultDiscount || 0
+  onSnapshot(doc(db, 'systemSettings', 'cfuEV4yQICQAzB1aTnzQ'), (snap) => {
+    if (snap.exists()) {
+      taxRate.value = (snap.data().defaultTax || 0) / 100
+      dbDiscount.value = snap.data().defaultDiscount || 0
     }
   })
 })
 
-// --- Calculations ---
-const subtotal = computed(() => props.cart.reduce((s, i) => s + i.unitPrice * i.quantity, 0))
-const taxAmount = computed(() => subtotal.value * taxRate.value)
-const finalTotal = computed(() => Math.max(0, subtotal.value + taxAmount.value - dbDiscount.value))
+// Computeds
+const grossTotal = computed(() => props.cart.reduce((s, i) => s + i.unitPrice * i.quantity, 0))
+const taxAmount = computed(() => grossTotal.value * taxRate.value)
+const subtotal = computed(() => grossTotal.value - taxAmount.value)
+const finalTotal = computed(() => Math.max(0, grossTotal.value - dbDiscount.value))
 const totalItems = computed(() => props.cart.reduce((t, i) => t + i.quantity, 0))
+
+// UPDATED: Treat null/empty as 0 for calculation
 const change = computed(() => (cashReceived.value || 0) - finalTotal.value)
 
-// --- Methods ---
+// Disable "Complete" button logic
+const isCheckoutDisabled = computed(() => {
+  if (!isCheckout.value) return false
+
+  // Only validate amount if paying by Cash
+  // UPDATED: Check against (value || 0)
+  if (paymentMethod.value === 'Cash') {
+    return (cashReceived.value || 0) < finalTotal.value
+  }
+
+  return false
+})
+
+// Methods
 const voidItem = (index) => {
   $q.dialog({
     title: 'Void Item',
-    message: 'Remove this item from the checkout list?',
+    message: 'Remove this item?',
     cancel: true,
     persistent: true,
     ok: { color: 'negative', label: 'Void' },
-  }).onOk(() => {
-    // Delta -999 effectively removes the item regardless of current quantity
-    emit('update-quantity', { index, delta: -999 })
-  })
+  }).onOk(() => emit('update-quantity', { index, delta: -999 }))
 }
 
-const handleCompleteOrder = () => {
-  if (cashReceived.value < finalTotal.value) {
-    $q.notify({ type: 'negative', message: 'Insufficient cash amount provided.' })
-    return
+const handleCompleteOrder = async () => {
+  // Logic check just in case
+  // UPDATED: Check against (value || 0)
+  if (paymentMethod.value === 'Cash' && (cashReceived.value || 0) < finalTotal.value) {
+    return $q.notify({ type: 'negative', message: 'Insufficient cash.' })
   }
 
-  emit('submit-order', {
-    subtotal: subtotal.value,
-    taxAmount: taxAmount.value,
-    discountAmount: dbDiscount.value,
-    totalAmount: finalTotal.value,
-    itemCount: totalItems.value,
-    taxRate: taxRate.value,
-    cashReceived: cashReceived.value,
-    changeAmount: change.value,
-    paymentMethod: 'Cash',
-  })
+  isProcessing.value = true
 
-  // Reset local state
-  isCheckout.value = false
-  cashReceived.value = 0
+  try {
+    emit('submit-order', {
+      subtotal: subtotal.value,
+      taxAmount: taxAmount.value,
+      discountAmount: dbDiscount.value,
+      totalAmount: finalTotal.value,
+      itemCount: totalItems.value,
+      taxRate: taxRate.value,
+
+      paymentMethod: paymentMethod.value,
+
+      // UPDATED: Send 0 if null
+      cashReceived: paymentMethod.value === 'Cash' ? cashReceived.value || 0 : 0,
+      changeAmount: paymentMethod.value === 'Cash' ? change.value : 0,
+
+      referenceNumber: 'N/A',
+
+      items: props.cart,
+      customer: localCustomer.value,
+    })
+
+    isCheckout.value = false
+    // UPDATED: Reset to null
+    cashReceived.value = null
+    paymentMethod.value = 'Cash'
+  } catch (e) {
+    console.error(e)
+    $q.notify({ type: 'negative', message: 'Error processing order' })
+  } finally {
+    isProcessing.value = false
+  }
 }
 
-// Watchers
 watch(localCustomer, (val) => emit('update:customer', val), { deep: true })
 watch(
   () => props.cart.length,
-  (newLen) => {
-    if (newLen === 0) {
+  (l) => {
+    if (l === 0) {
       isCheckout.value = false
-      cashReceived.value = 0
+      // UPDATED: Reset to null
+      cashReceived.value = null
     }
   },
 )

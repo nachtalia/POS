@@ -1,0 +1,47 @@
+type User @table {
+  username: String!
+  passwordHash: String!
+  role: String!
+  createdAt: Timestamp!
+  displayName: String
+  email: String
+}
+
+type Product @table {
+  name: String!
+  price: Float!
+  stockQuantity: Int!
+  createdAt: Timestamp!
+  description: String
+  barcode: String
+  category: String
+}
+
+type Order @table {
+  orderDate: Timestamp!
+  totalAmount: Float!
+  paymentMethod: String!
+  createdAt: Timestamp!
+  discountAmount: Float
+  customerName: String
+  customerEmail: String
+  processedBy: User
+}
+
+type OrderItem @table {
+  quantity: Int!
+  unitPrice: Float!
+  subtotal: Float!
+  discountApplied: Float
+  order: Order
+  product: Product
+}
+
+type Shift @table {
+  startTime: Timestamp!
+  endTime: Timestamp!
+  startCash: Float
+  endCash: Float
+  salesTotal: Float
+  employee: User
+}

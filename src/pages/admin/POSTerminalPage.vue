@@ -34,8 +34,6 @@
       :img-map="imgMap"
       @add-to-cart="handleAddToCart"
     />
-
-    <ReceiptDialog v-model="showReceipt" :order="receiptOrder" />
   </q-layout>
 </template>
 
@@ -55,7 +53,7 @@ import POSHeader from 'src/components/pos/POSHeader.vue'
 import ProductBrowser from 'src/components/pos/ProductBrowser.vue'
 import POSCartPanel from 'src/components/pos/POSCartPanel.vue'
 import ProductCustomizer from 'src/components/pos/ProductCustomizer.vue'
-import ReceiptDialog from 'src/components/ordering/ReceiptDialog.vue'
+// Removed ReceiptDialog import
 
 const $q = useQuasar()
 useRouter()
@@ -72,8 +70,8 @@ let unsubscribeProducts = null
 
 const showCustomizer = ref(false)
 const activeProduct = ref(null)
-const showReceipt = ref(false)
-const receiptOrder = ref(null)
+// Removed showReceipt and receiptOrder state variables
+
 const PLACEHOLDER_IMG =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
 
@@ -139,10 +137,6 @@ const clearCart = () => {
   })
 }
 
-const saveAsDraft = () => {
-  $q.notify({ message: 'Order saved as draft', color: 'info' })
-}
-
 const submitOrder = async (summaryData) => {
   const orderData = {
     customer: customer.value,
@@ -173,8 +167,8 @@ const submitOrder = async (summaryData) => {
       entityId: finalOrder.id,
       details: { orderNumber: finalOrder.orderNumber, total: finalOrder.totalAmount },
     })
-    receiptOrder.value = finalOrder
-    showReceipt.value = true
+
+    // Success logic: Clear cart, Reset customer, Notify user
     cart.value = []
     customer.value = { name: '', email: '', phone: '' }
   } catch (err) {

@@ -35,9 +35,9 @@ const routes = [
         component: () => import('pages/admin/InventoryPage.vue'),
         meta: {
           isSidebarItem: true,
-          label: 'Inventory',
+          label: 'Products',
           icon: 'inventory',
-          caption: 'Manage products and stock',
+          caption: 'Manage products',
           permissions: ['inventory:view'],
         },
       },

@@ -42,8 +42,6 @@
         @add-to-cart="handleAddToCart"
       />
     </q-layout>
-
-    <ReceiptDialog v-model="showReceipt" :order="receiptOrder" />
   </q-dialog>
 </template>
 
@@ -58,11 +56,11 @@ import { useOrderStore } from 'src/stores/orderStore'
 import { logAudit } from 'src/services/auditService'
 
 // Import New Components
-import POSHeader from 'src/components/pos/POSHeader.vue'
+import POSHeader from 'src/components/POSHeader.vue'
 import ProductBrowser from 'src/components/pos/ProductBrowser.vue'
 import POSCartPanel from 'src/components/pos/POSCartPanel.vue'
 import ProductCustomizer from 'src/components/pos/ProductCustomizer.vue'
-import ReceiptDialog from 'src/components/ordering/ReceiptDialog.vue'
+// ReceiptDialog import removed
 
 const $q = useQuasar()
 const addonStore = useAddonStore()
@@ -84,9 +82,6 @@ let unsubscribeProducts = null
 const showCustomizer = ref(false)
 const activeProduct = ref(null)
 
-// Receipt State
-const showReceipt = ref(false)
-const receiptOrder = ref(null)
 const PLACEHOLDER_IMG =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
 
@@ -194,10 +189,10 @@ const submitOrder = async (summaryData) => {
       details: { orderNumber: finalOrder.orderNumber, total: finalOrder.totalAmount },
     })
 
-    receiptOrder.value = finalOrder
-    showReceipt.value = true
+    // Simply clear cart and reset customer, no receipt dialog shown
     cart.value = []
     customer.value = { name: '', email: '', phone: '' }
+    $q.notify({ type: 'positive', message: 'Order saved successfully' })
   } catch (err) {
     $q.notify({ type: 'negative', message: err.message })
   }
