@@ -2,7 +2,7 @@ name: Deploy to Firebase Hosting
 on:
   push:
     branches:
-      - main # Make sure this matches your branch name
+      - master # Make sure this matches your branch name
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
