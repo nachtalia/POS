@@ -140,8 +140,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'add-to-cart'])
 
 const addonStore = useAddonStore()
-const PLACEHOLDER_IMG =
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
+const PLACEHOLDER_IMG = 'https://placehold.co/400?text=No+Image&font=roboto'
 
 // State
 const form = reactive({
@@ -164,15 +163,13 @@ watch(
   },
 )
 
-// Add-ons filtering based on Firestore status and allowedProductIds
 const availableAddons = computed(() => {
   if (!props.product) return []
   return addonStore.addons.filter((a) => {
-    // Only 'Available' status
     const isAvailable = a.status === 'Available'
-    // Current product ID must be in the allowed list
-    const isAllowed = a.allowedProductIds && a.allowedProductIds.includes(props.product.id)
-    return isAvailable && isAllowed
+    const p = props.product
+    const explicitlyAllowed = Array.isArray(p.allowedAddons) && p.allowedAddons.includes(a.id)
+    return isAvailable && explicitlyAllowed
   })
 })
 

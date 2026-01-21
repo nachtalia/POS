@@ -105,6 +105,14 @@
                   @click="showAddAddonDialog = true"
                   v-if="canAddAddon"
                 />
+                <q-btn
+                  color="primary"
+                  icon="category"
+                  label="Add Add-on Category"
+                  class="q-ml-sm"
+                  @click="showAddAddonCategoryDialog = true"
+                  v-if="canAddAddon"
+                />
               </div>
             </div>
 
@@ -326,6 +334,51 @@
               <div class="col-12" v-if="productImagePreview">
                 <q-img :src="productImagePreview" style="height: 140%" class="rounded-borders" />
               </div>
+              <div class="col-12">
+                <div class="text-subtitle2 q-mb-sm text-grey-8">Add-ons</div>
+                <q-select
+                  v-model="productForm.allowedAddonCategories"
+                  :options="addonCategoryOptions"
+                  label="Filter by Add-on Categories"
+                  outlined
+                  dense
+                  multiple
+                  use-chips
+                  stack-label
+                  hint="Filters add-on options by selected categories"
+                  class="q-mb-md"
+                />
+                <div
+                  v-if="(productForm.allowedAddonCategories || []).length > 0"
+                  class="text-caption text-grey-7 q-mb-xs"
+                >
+                  Choose add-ons to include for this product based on selected categories.
+                </div>
+                <q-select
+                  v-model="productForm.allowedAddons"
+                  :options="addonOptions"
+                  label="Select Add-ons"
+                  outlined
+                  dense
+                  multiple
+                  use-chips
+                  stack-label
+                  option-value="value"
+                  option-label="label"
+                  emit-value
+                  map-options
+                  :hint="specificAddonsHint"
+                >
+                  <template v-slot:option="scope">
+                    <q-item v-bind="scope.itemProps">
+                      <q-item-section>
+                        <q-item-label>{{ scope.opt.label }}</q-item-label>
+                        <q-item-label caption>{{ scope.opt.category }}</q-item-label>
+                      </q-item-section>
+                    </q-item>
+                  </template>
+                </q-select>
+              </div>
             </div>
           </q-form>
         </q-card-section>
@@ -339,6 +392,37 @@
             @click="submitForm"
             :loading="productStore.loading"
           />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="showAddAddonCategoryDialog" persistent>
+      <q-card style="min-width: 360px">
+        <q-card-section>
+          <div class="text-h6">Add Add-on Category</div>
+        </q-card-section>
+        <q-card-section>
+          <q-form @submit.prevent="handleSaveAddonCategory" id="addonCategoryForm">
+            <q-input
+              v-model="addonCategoryForm.name"
+              label="Name"
+              outlined
+              dense
+              class="q-mb-md"
+              :rules="[(val) => !!val || 'Required']"
+            />
+            <q-input
+              v-model="addonCategoryForm.description"
+              label="Description"
+              type="textarea"
+              outlined
+              dense
+            />
+          </q-form>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" color="primary" @click="closeAddonCategoryDialog" />
+          <q-btn flat label="Save" color="primary" type="submit" form="addonCategoryForm" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -454,16 +538,6 @@
               emit-value
               :rules="[(v) => !!v || 'Required']"
             />
-            <q-select
-              v-model="addonForm.allowedProductIds"
-              :options="productOptions"
-              label="Allowed Products"
-              outlined
-              dense
-              multiple
-              emit-value
-              map-options
-            />
           </q-form>
         </q-card-section>
         <q-card-actions align="right">
@@ -506,6 +580,7 @@ const editingProduct = ref(null)
 const showAddCategoryDialog = ref(false)
 const showAddAddonDialog = ref(false)
 const editingAddon = ref(null)
+const showAddAddonCategoryDialog = ref(false)
 
 // Reference to the form element
 const myForm = ref(null)
@@ -536,6 +611,8 @@ const productForm = reactive({
   productCost: 0,
   productCategory: '',
   productImage: '',
+  allowedAddons: [],
+  allowedAddonCategories: [],
 })
 
 const categoryForm = reactive({ name: '', description: '' })
@@ -545,8 +622,8 @@ const addonForm = reactive({
   price: 0,
   stock: null,
   status: 'Available',
-  allowedProductIds: [],
 })
+const addonCategoryForm = reactive({ name: '', description: '' })
 const productImageFile = ref(null)
 const productImagePreview = ref('')
 
@@ -610,6 +687,7 @@ onMounted(() => {
   productStore.fetchProducts()
   categoryStore.fetchCategories()
   addonStore.fetchAddons()
+  addonStore.fetchAddonCategories()
 })
 
 const categoryOptions = computed(() => [
@@ -618,15 +696,19 @@ const categoryOptions = computed(() => [
 ])
 const categoriesForForm = computed(() => (categoryStore.categories || []).map((c) => c.name))
 // removed stock options
-const addonCategoryOptions = ['Toppings', 'Extras']
+const addonCategoryOptions = computed(() => (addonStore.addonCategories || []).map((c) => c.name))
 const statusOptions = ['Available', 'Unavailable']
-const productOptions = computed(() =>
-  (productStore.products || []).map((p) => ({ label: p.productName, value: p.id })),
-)
+const addonOptions = computed(() => {
+  const cats = productForm.allowedAddonCategories || []
+  const list = (addonStore.addons || []).filter(
+    (a) => cats.length === 0 || cats.includes(a.category),
+  )
+  return list.map((a) => ({ label: a.name, value: a.id, category: a.category }))
+})
 const selectedAddonAvailability = ref('All')
 const selectedAddonCategory = ref('All')
 const addonAvailabilityOptions = ['All', 'Available', 'Unavailable']
-const addonCategoryFilterOptions = ['All', ...addonCategoryOptions]
+const addonCategoryFilterOptions = computed(() => ['All', ...addonCategoryOptions.value])
 const showExportDialog = ref(false)
 const exportFormat = ref('csv')
 const formatOptions = [
@@ -636,6 +718,13 @@ const formatOptions = [
 const exportUseTableFilters = ref(true)
 const exportCategory = ref('All')
 // removed export stock filter
+const specificAddonsHint = computed(() => {
+  const cats = productForm.allowedAddonCategories || []
+  const count = addonOptions.value.length
+  return cats.length
+    ? `Choose add-ons to include (${count} available)`
+    : 'Choose add-ons to include for this product'
+})
 
 const filteredProducts = computed(() => {
   let items = productStore.products || []
@@ -672,6 +761,21 @@ const filteredAddons = computed(() => {
   return list
 })
 
+watch(
+  () => productForm.allowedAddonCategories,
+  (cats) => {
+    const idsAllowedByCats = (addonStore.addons || [])
+      .filter((a) => (cats || []).includes(a.category))
+      .map((a) => a.id)
+    if ((cats || []).length > 0) {
+      productForm.allowedAddons = (productForm.allowedAddons || []).filter((id) =>
+        idsAllowedByCats.includes(id),
+      )
+    }
+  },
+  { deep: true },
+)
+
 const openEditDialog = (product) => {
   editingProduct.value = product
   Object.assign(productForm, {
@@ -680,6 +784,10 @@ const openEditDialog = (product) => {
     productCost: product.productCost,
     productCategory: product.productCategory,
     productImage: product.productImage || '',
+    allowedAddons: Array.isArray(product.allowedAddons) ? [...product.allowedAddons] : [],
+    allowedAddonCategories: Array.isArray(product.allowedAddonCategories)
+      ? [...product.allowedAddonCategories]
+      : [],
   })
   showAddProductDialog.value = true
 }
@@ -692,7 +800,6 @@ const openEditAddonDialog = (addon) => {
     price: addon.price,
     stock: addon.stock,
     status: addon.status,
-    allowedProductIds: Array.isArray(addon.allowedProductIds) ? [...addon.allowedProductIds] : [],
   })
   showAddAddonDialog.value = true
 }
@@ -784,7 +891,6 @@ const closeAddonDialog = () => {
     price: 0,
     stock: null,
     status: 'Available',
-    allowedProductIds: [],
   })
 }
 
@@ -814,6 +920,8 @@ const closeProductDialog = () => {
     productCost: 0,
     productCategory: '',
     productImage: '',
+    allowedAddons: [],
+    allowedAddonCategories: [],
   })
   clearImage()
 }
@@ -981,6 +1089,30 @@ const handleSaveCategory = async () => {
 const closeCategoryDialog = () => {
   showAddCategoryDialog.value = false
   Object.assign(categoryForm, { name: '', description: '' })
+}
+
+const handleSaveAddonCategory = async () => {
+  try {
+    if (!addonCategoryForm.name) {
+      $q.notify({ color: 'negative', message: 'Name is required', icon: 'warning' })
+      return
+    }
+    await addonStore.addAddonCategory({ ...addonCategoryForm })
+    $q.notify({ color: 'positive', message: 'Add-on category added', icon: 'category' })
+    closeAddonCategoryDialog()
+    await addonStore.fetchAddonCategories()
+  } catch (e) {
+    console.error(e)
+    $q.notify({
+      color: 'negative',
+      message: 'Error adding add-on category',
+      icon: 'report_problem',
+    })
+  }
+}
+const closeAddonCategoryDialog = () => {
+  showAddAddonCategoryDialog.value = false
+  Object.assign(addonCategoryForm, { name: '', description: '' })
 }
 </script>
 <style scoped>
