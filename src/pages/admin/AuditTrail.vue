@@ -379,6 +379,7 @@ const columns = [
   { name: 'module', label: 'Module', field: 'module', align: 'left', sortable: true },
   {
     name: 'entityName',
+    label: 'Item Name',
     field: (row) => row.entityName || row.productName || 'N/A',
     align: 'left',
     sortable: true,
