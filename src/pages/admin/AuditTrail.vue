@@ -364,16 +364,13 @@ const entityHistory = ref([])
 const loadingHistory = ref(false)
 const fetchingName = ref(false)
 
-// Data Resolution State
 const resolvingNames = ref(false)
 const resolvedNameMap = ref({})
 
-// List View Modal State
 const detailsListDialog = ref(false)
 const detailsListTitle = ref('')
 const detailsListItems = ref([])
 
-// --- Options & Config ---
 const moduleOptions = ['All', 'inventory', 'products', 'ordering', 'userManagement', 'system']
 const actionOptions = ['All', 'Add', 'Edit', 'Delete']
 
