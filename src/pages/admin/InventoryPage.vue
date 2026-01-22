@@ -10,577 +10,101 @@
           <q-separator />
 
           <q-card-section>
-            <div class="row q-col-gutter-md q-mb-md">
-              <div class="col-12">
-                <div class="bg-white rounded-borders shadow-1 q-pa-xs">
-                  <q-tabs
-                    v-model="selectedInventoryTab"
-                    active-color="primary"
-                    indicator-color="primary"
-                    align="left"
-                    dense
-                    class="text-grey-7"
-                  >
-                    <q-tab name="products" label="Products" icon="inventory_2" />
-                    <q-tab name="addons" label="Add-ons" icon="extension" />
-                  </q-tabs>
-                </div>
-              </div>
-              <div class="col-12 col-md-4">
-                <q-input v-model="searchQuery" outlined dense placeholder="Search">
-                  <template v-slot:prepend><q-icon name="search" /></template>
-                </q-input>
-              </div>
-              <div class="col-12 col-md-4" v-if="selectedInventoryTab === 'products'">
-                <q-select
-                  v-model="selectedCategory"
-                  :options="categoryOptions"
-                  outlined
-                  dense
-                  label="Category"
-                  emit-value
-                />
-              </div>
-              <div class="col-12 col-md-4" v-if="selectedInventoryTab === 'products'">
-                <q-btn-toggle
-                  v-model="selectedProductView"
-                  spread
-                  toggle-color="primary"
-                  unelevated
-                  :options="[
-                    { label: 'Catalog', value: 'catalog', icon: 'grid_on' },
-                    { label: 'Table', value: 'table', icon: 'table_rows' },
-                  ]"
-                />
-              </div>
-              <div class="col-12 col-md-4" v-if="selectedInventoryTab === 'addons'">
-                <q-select
-                  v-model="selectedAddonAvailability"
-                  :options="addonAvailabilityOptions"
-                  outlined
-                  dense
-                  label="Availability"
-                  emit-value
-                />
-              </div>
-              <div class="col-12 col-md-4" v-if="selectedInventoryTab === 'addons'">
-                <q-select
-                  v-model="selectedAddonCategory"
-                  :options="addonCategoryFilterOptions"
-                  outlined
-                  dense
-                  label="Add-on Category"
-                  emit-value
-                />
-              </div>
-              <div class="col-12" v-if="selectedInventoryTab === 'products'">
-                <q-btn
-                  color="primary"
-                  icon="category"
-                  label="Add Category"
-                  class="q-mr-sm"
-                  @click="showAddCategoryDialog = true"
-                  v-if="canAddCategory"
-                />
-                <q-btn
-                  color="primary"
-                  icon="add"
-                  label="Add Product"
-                  @click="showAddProductDialog = true"
-                  v-if="canAddProduct"
-                />
-                <q-btn
-                  color="secondary"
-                  icon="download"
-                  label="Export"
-                  class="q-ml-sm"
-                  @click="showExportDialog = true"
-                />
-              </div>
-              <div class="col-12" v-if="selectedInventoryTab === 'addons'">
-                <q-btn
-                  color="primary"
-                  icon="add"
-                  label="Add Add-on"
-                  @click="showAddAddonDialog = true"
-                  v-if="canAddAddon"
-                />
-                <q-btn
-                  color="primary"
-                  icon="category"
-                  label="Add Add-on Category"
-                  class="q-ml-sm"
-                  @click="showAddAddonCategoryDialog = true"
-                  v-if="canAddAddon"
-                />
-              </div>
-            </div>
+            <inventory-filters
+              v-model:selectedInventoryTab="selectedInventoryTab"
+              v-model:searchQuery="searchQuery"
+              v-model:selectedCategory="selectedCategory"
+              v-model:selectedProductView="selectedProductView"
+              v-model:selectedAddonAvailability="selectedAddonAvailability"
+              v-model:selectedAddonCategory="selectedAddonCategory"
+              :category-options="categoryOptions"
+              :addon-availability-options="addonAvailabilityOptions"
+              :addon-category-filter-options="addonCategoryFilterOptions"
+              :can-add-category="canAddCategory"
+              :can-add-product="canAddProduct"
+              :can-add-addon="canAddAddon"
+              :can-view-addons="canViewAddons"
+              @add-category="showAddCategoryDialog = true"
+              @add-product="showAddProductDialog = true"
+              @export="showExportDialog = true"
+              @add-addon="showAddAddonDialog = true"
+              @add-addon-category="showAddAddonCategoryDialog = true"
+            />
 
-            <q-table
-              :rows="filteredProducts"
-              :columns="columns"
-              row-key="id"
-              :loading="productStore.loading"
-              flat
-              bordered
+            <products-table
               v-if="selectedInventoryTab === 'products' && selectedProductView === 'table'"
-            >
-              <template v-slot:no-data="{ filter }">
-                <div class="full-width row flex-center q-gutter-sm q-pa-lg text-grey-8">
-                  <q-icon size="2em" :name="filter ? 'filter_list_off' : 'inventory_2'" />
-                  <span>{{ filter ? 'No matches found' : 'No products found' }}</span>
-                </div>
-              </template>
-              <template v-slot:body-cell-actions="props">
-                <q-td :props="props">
-                  <q-btn
-                    flat
-                    round
-                    dense
-                    icon="edit"
-                    color="primary"
-                    @click="openEditDialog(props.row)"
-                    v-if="canEditProduct"
-                  />
-                  <q-btn
-                    flat
-                    round
-                    dense
-                    icon="delete"
-                    color="negative"
-                    @click="confirmDelete(props.row)"
-                    v-if="canDeleteProduct"
-                  />
-                </q-td>
-              </template>
-            </q-table>
+              :products="filteredProducts"
+              :loading="productStore.loading"
+              :can-edit-product="canEditProduct"
+              :can-delete-product="canDeleteProduct"
+              @edit="openEditDialog"
+              @delete="confirmDelete"
+            />
 
-            <div v-if="selectedInventoryTab === 'products' && selectedProductView === 'catalog'">
-              <div class="row q-col-gutter-md">
-                <div
-                  v-for="p in filteredProducts"
-                  :key="p.id"
-                  class="col-6 col-sm-4 col-md-3 col-lg-2"
-                >
-                  <q-card class="shadow-1 catalog-card">
-                    <q-img
-                      :src="p.productImage || placeholderImage"
-                      class="rounded-borders"
-                      style="height: 120px"
-                    >
-                      <template v-slot:error>
-                        <div class="absolute-full flex flex-center bg-grey-3 text-grey">
-                          <q-icon name="image_not_supported" />
-                        </div>
-                      </template>
-                    </q-img>
-                    <q-card-section>
-                      <div class="text-weight-bold text-grey-9">{{ p.productName }}</div>
-                      <div class="row items-center justify-between q-mt-xs">
-                        <q-chip dense color="grey-3" text-color="grey-8" v-if="p.productCategory">
-                          {{ p.productCategory }}
-                        </q-chip>
-                        <div class="text-weight-bold text-primary">
-                          ₱{{ Number(p.productPrice || 0).toFixed(2) }}
-                        </div>
-                      </div>
-                    </q-card-section>
-                    <q-card-actions align="right">
-                      <q-btn
-                        flat
-                        round
-                        dense
-                        icon="edit"
-                        color="primary"
-                        @click="openEditDialog(p)"
-                        v-if="canEditProduct"
-                      />
-                      <q-btn
-                        flat
-                        round
-                        dense
-                        icon="delete"
-                        color="negative"
-                        @click="confirmDelete(p)"
-                        v-if="canDeleteProduct"
-                      />
-                    </q-card-actions>
-                  </q-card>
-                </div>
-              </div>
-            </div>
+            <products-catalog
+              v-if="selectedInventoryTab === 'products' && selectedProductView === 'catalog'"
+              :products="filteredProducts"
+              :placeholder-image="placeholderImage"
+              :can-edit-product="canEditProduct"
+              :can-delete-product="canDeleteProduct"
+              @edit="openEditDialog"
+              @delete="confirmDelete"
+            />
 
-            <q-table
-              :rows="filteredAddons"
-              :columns="addonColumns"
-              row-key="id"
+            <addons-table
+              v-if="selectedInventoryTab === 'addons' && canViewAddons"
+              :addons="filteredAddons"
               :loading="addonStore.loading"
-              flat
-              bordered
-              v-if="selectedInventoryTab === 'addons'"
-            >
-              <template v-slot:body-cell-status="props">
-                <q-td :props="props">
-                  <q-badge :color="props.row.status === 'Available' ? 'positive' : 'grey-7'">
-                    {{ props.row.status }}
-                  </q-badge>
-                </q-td>
-              </template>
-              <template v-slot:body-cell-actions="props">
-                <q-td :props="props">
-                  <q-btn
-                    flat
-                    round
-                    dense
-                    icon="edit"
-                    color="primary"
-                    @click="openEditAddonDialog(props.row)"
-                    v-if="canEditAddon"
-                  />
-                  <q-btn
-                    flat
-                    round
-                    dense
-                    icon="delete"
-                    color="negative"
-                    @click="confirmDeleteAddon(props.row)"
-                    v-if="canDeleteAddon"
-                  />
-                </q-td>
-              </template>
-              <template v-slot:no-data>
-                <div class="full-width row flex-center q-gutter-sm q-pa-lg text-grey-8">
-                  <q-icon size="2em" name="extension" />
-                  <span>No add-ons</span>
-                </div>
-              </template>
-            </q-table>
+              :can-edit-addon="canEditAddon"
+              :can-delete-addon="canDeleteAddon"
+              @edit="openEditAddonDialog"
+              @delete="confirmDeleteAddon"
+            />
           </q-card-section>
         </q-card>
       </div>
     </div>
 
-    <!-- Add/Edit Product Dialog -->
-    <q-dialog v-model="showAddProductDialog" persistent>
-      <q-card style="min-width: 400px">
-        <q-card-section>
-          <div class="text-h6">{{ editingProduct ? 'Edit Product' : 'Add Product' }}</div>
-        </q-card-section>
+    <product-dialog
+      v-model="showAddProductDialog"
+      :editing-product="editingProduct"
+      :categories="categoriesForForm"
+      :addon-category-options="addonCategoryOptions"
+      :addon-options="addonOptions"
+      :specific-addons-hint="specificAddonsHint"
+      :loading="productStore.loading"
+      @save="handleSaveProduct"
+      @cancel="closeProductDialog"
+      @clear-image="clearImage"
+    />
 
-        <q-card-section>
-          <q-form ref="myForm" class="q-gutter-md">
-            <q-input
-              v-model="productForm.productName"
-              label="Product Name"
-              outlined
-              dense
-              :rules="[(val) => !!val || 'Product name is required']"
-            />
+    <addon-category-dialog
+      v-model="showAddAddonCategoryDialog"
+      @save="handleSaveAddonCategory"
+      @cancel="closeAddonCategoryDialog"
+    />
 
-            <div class="row q-col-gutter-sm">
-              <div class="col-6">
-                <q-input
-                  v-model.number="productForm.productPrice"
-                  label="Price"
-                  type="number"
-                  outlined
-                  dense
-                  :rules="[
-                    (val) => (val !== null && val !== '') || 'Price is required',
-                    (val) => val >= 0 || 'Cannot be negative',
-                  ]"
-                />
-              </div>
-              <div class="col-6">
-                <q-input
-                  v-model.number="productForm.productCost"
-                  label="Cost"
-                  type="number"
-                  outlined
-                  dense
-                  :rules="[
-                    (val) => (val !== null && val !== '') || 'Cost is required',
-                    (val) => val >= 0 || 'Cannot be negative',
-                  ]"
-                />
-              </div>
-            </div>
+    <category-dialog
+      v-model="showAddCategoryDialog"
+      @save="handleSaveCategory"
+      @cancel="closeCategoryDialog"
+    />
 
-            <q-select
-              v-model="productForm.productCategory"
-              :options="categoriesForForm"
-              label="Category"
-              outlined
-              dense
-              :rules="[(val) => !!val || 'Category is required']"
-            />
+    <export-dialog
+      v-model="showExportDialog"
+      :category-options="categoryOptions"
+      @export="executeExport"
+    />
 
-            <div class="row q-col-gutter-sm items-center">
-              <div class="col-12">
-                <q-file
-                  v-model="productImageFile"
-                  accept="image/*"
-                  outlined
-                  dense
-                  label="Product Image"
-                  @update:model-value="handleImageSelect"
-                  clearable
-                >
-                  <template v-slot:prepend><q-icon name="image" /></template>
-                </q-file>
-              </div>
-
-              <!-- Image Preview Section -->
-              <div class="col-12" v-if="productImagePreview || productForm.productImage">
-                <div class="text-caption text-grey-7 q-mb-xs">Image Preview:</div>
-                <div
-                  class="flex flex-center q-pa-sm"
-                  style="border: 1px solid #e0e0e0; border-radius: 8px; background: #f5f5f5"
-                >
-                  <q-img
-                    :src="productImagePreview || productForm.productImage"
-                    style="max-height: 200px; max-width: 100%; object-fit: contain"
-                    class="rounded-borders"
-                    spinner-color="primary"
-                  >
-                    <template v-slot:error>
-                      <div class="absolute-full flex flex-center bg-grey-3 text-grey">
-                        <q-icon name="image_not_supported" size="xl" />
-                      </div>
-                    </template>
-                  </q-img>
-                </div>
-                <div class="text-center q-mt-xs">
-                  <q-btn
-                    flat
-                    dense
-                    color="negative"
-                    icon="delete"
-                    label="Remove Image"
-                    size="sm"
-                    @click="clearImage"
-                  />
-                </div>
-              </div>
-
-              <div class="col-12">
-                <div class="text-subtitle2 q-mb-sm text-grey-8">Add-ons</div>
-                <q-select
-                  v-model="productForm.allowedAddonCategories"
-                  :options="addonCategoryOptions"
-                  label="Filter by Add-on Categories"
-                  outlined
-                  dense
-                  multiple
-                  use-chips
-                  stack-label
-                  hint="Filters add-on options by selected categories"
-                  class="q-mb-md"
-                />
-                <div
-                  v-if="(productForm.allowedAddonCategories || []).length > 0"
-                  class="text-caption text-grey-7 q-mb-xs"
-                >
-                  Choose add-ons to include for this product based on selected categories.
-                </div>
-                <q-select
-                  v-model="productForm.allowedAddons"
-                  :options="addonOptions"
-                  label="Select Add-ons"
-                  outlined
-                  dense
-                  multiple
-                  use-chips
-                  stack-label
-                  option-value="value"
-                  option-label="label"
-                  emit-value
-                  map-options
-                  :hint="specificAddonsHint"
-                >
-                  <template v-slot:option="scope">
-                    <q-item v-bind="scope.itemProps">
-                      <q-item-section>
-                        <q-item-label>{{ scope.opt.label }}</q-item-label>
-                        <q-item-label caption>{{ scope.opt.category }}</q-item-label>
-                      </q-item-section>
-                    </q-item>
-                  </template>
-                </q-select>
-              </div>
-            </div>
-          </q-form>
-        </q-card-section>
-
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" color="primary" @click="closeProductDialog" />
-          <q-btn
-            flat
-            label="Save"
-            color="primary"
-            @click="submitForm"
-            :loading="productStore.loading"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <q-dialog v-model="showAddAddonCategoryDialog" persistent>
-      <q-card style="min-width: 360px">
-        <q-card-section>
-          <div class="text-h6">Add Add-on Category</div>
-        </q-card-section>
-        <q-card-section>
-          <q-form @submit.prevent="handleSaveAddonCategory" id="addonCategoryForm">
-            <q-input
-              v-model="addonCategoryForm.name"
-              label="Name"
-              outlined
-              dense
-              class="q-mb-md"
-              :rules="[(val) => !!val || 'Required']"
-            />
-            <q-input
-              v-model="addonCategoryForm.description"
-              label="Description"
-              type="textarea"
-              outlined
-              dense
-            />
-          </q-form>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" color="primary" @click="closeAddonCategoryDialog" />
-          <q-btn flat label="Save" color="primary" type="submit" form="addonCategoryForm" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <q-dialog v-model="showAddCategoryDialog" persistent>
-      <q-card style="min-width: 360px">
-        <q-card-section>
-          <div class="text-h6">Add Category</div>
-        </q-card-section>
-        <q-card-section>
-          <q-form @submit.prevent="handleSaveCategory" id="categoryForm">
-            <q-input
-              v-model="categoryForm.name"
-              label="Name"
-              outlined
-              dense
-              class="q-mb-md"
-              :rules="[(val) => !!val || 'Required']"
-            />
-            <q-input
-              v-model="categoryForm.description"
-              label="Description"
-              type="textarea"
-              outlined
-              dense
-            />
-          </q-form>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" color="primary" @click="closeCategoryDialog" />
-          <q-btn flat label="Save" color="primary" type="submit" form="categoryForm" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <q-dialog v-model="showExportDialog">
-      <q-card style="min-width: 360px">
-        <q-card-section>
-          <div class="text-h6">Export Inventory</div>
-          <div class="text-caption">Choose export format</div>
-        </q-card-section>
-        <q-card-section>
-          <q-option-group v-model="exportFormat" :options="formatOptions" color="primary" inline />
-          <q-separator spaced />
-          <q-toggle v-model="exportUseTableFilters" label="Use current table filters" />
-          <div v-if="!exportUseTableFilters" class="q-mt-md row q-col-gutter-sm">
-            <div class="col-12">
-              <q-select
-                v-model="exportCategory"
-                :options="categoryOptions"
-                label="Category"
-                outlined
-                dense
-                emit-value
-              />
-            </div>
-          </div>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" color="primary" v-close-popup />
-          <q-btn flat label="Export" color="primary" @click="executeExport" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <q-dialog v-model="showAddAddonDialog" persistent>
-      <q-card style="min-width: 400px">
-        <q-card-section>
-          <div class="text-h6">{{ editingAddon ? 'Edit Add-on' : 'Add Add-on' }}</div>
-        </q-card-section>
-        <q-card-section>
-          <q-form ref="addonFormRef" class="q-gutter-md">
-            <q-input
-              v-model="addonForm.name"
-              label="Add-On Name"
-              outlined
-              dense
-              :rules="[(v) => !!v || 'Required']"
-            />
-            <q-select
-              v-model="addonForm.category"
-              :options="addonCategoryOptions"
-              label="Category"
-              outlined
-              dense
-              emit-value
-              :rules="[(v) => !!v || 'Required']"
-            />
-            <q-input
-              v-model.number="addonForm.price"
-              label="Price"
-              type="number"
-              outlined
-              dense
-              :rules="[
-                (v) => (v !== null && v !== '') || 'Required',
-                (v) => v >= 0 || 'Cannot be negative',
-              ]"
-            />
-            <q-input
-              v-model.number="addonForm.stock"
-              label="Stock (optional)"
-              type="number"
-              outlined
-              dense
-            />
-            <q-select
-              v-model="addonForm.status"
-              :options="statusOptions"
-              label="Status"
-              outlined
-              dense
-              emit-value
-              :rules="[(v) => !!v || 'Required']"
-            />
-          </q-form>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" color="primary" @click="closeAddonDialog" />
-          <q-btn
-            flat
-            label="Save"
-            color="primary"
-            @click="submitAddon"
-            :loading="addonStore.loading"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <addon-dialog
+      v-model="showAddAddonDialog"
+      :editing-addon="editingAddon"
+      :addon-category-options="addonCategoryOptions"
+      :status-options="statusOptions"
+      :loading="addonStore.loading"
+      @save="handleSaveAddon"
+      @cancel="closeAddonDialog"
+    />
   </q-page>
 </template>
 
@@ -591,6 +115,15 @@ import { useCategoryStore } from '../../stores/categoryStore'
 import { useAddonStore } from '../../stores/addonStore'
 import { useAuthStore } from 'src/features/index.js'
 import { useQuasar } from 'quasar'
+import InventoryFilters from 'src/components/inventory/InventoryFilters.vue'
+import ProductsTable from 'src/components/inventory/ProductsTable.vue'
+import ProductsCatalog from 'src/components/inventory/ProductsCatalog.vue'
+import AddonsTable from 'src/components/inventory/AddonsTable.vue'
+import ProductDialog from 'src/components/inventory/dialog/ProductDialog.vue'
+import CategoryDialog from 'src/components/inventory/dialog/CategoryDialog.vue'
+import AddonDialog from 'src/components/inventory/dialog/AddonDialog.vue'
+import AddonCategoryDialog from 'src/components/inventory/dialog/AddonCategoryDialog.vue'
+import ExportDialog from 'src/components/inventory/dialog/ExportDialog.vue'
 
 const $q = useQuasar()
 const productStore = useProductStore()
@@ -598,6 +131,7 @@ const categoryStore = useCategoryStore()
 const addonStore = useAddonStore()
 const authStore = useAuthStore()
 
+// State
 const searchQuery = ref('')
 const selectedCategory = ref('All')
 const selectedInventoryTab = ref('products')
@@ -609,29 +143,12 @@ const showAddCategoryDialog = ref(false)
 const showAddAddonDialog = ref(false)
 const editingAddon = ref(null)
 const showAddAddonCategoryDialog = ref(false)
+const showExportDialog = ref(false)
+const exportFormat = ref('csv')
+const exportUseTableFilters = ref(true)
+const exportCategory = ref('All')
 
-const myForm = ref(null)
-const addonFormRef = ref(null)
-
-const has = (perm) =>
-  authStore.isSuperAdmin ||
-  authStore.permissions.includes('*') ||
-  authStore.permissions.includes(perm)
-const canAddCategory = computed(
-  () => authStore.can('addCategory', 'inventory') || has('inventory:addCategory'),
-)
-const canAddProduct = computed(
-  () => authStore.can('addProduct', 'inventory') || has('inventory:addProduct'),
-)
-const canEditProduct = computed(
-  () => authStore.can('editProduct', 'inventory') || has('inventory:editProduct'),
-)
-const canDeleteProduct = computed(
-  () => authStore.can('deleteProduct', 'inventory') || has('inventory:deleteProduct'),
-)
-const canAddAddon = computed(() => authStore.can('add', 'addons') || has('addons:add'))
-const canEditAddon = computed(() => authStore.can('edit', 'addons') || has('addons:edit'))
-const canDeleteAddon = computed(() => authStore.can('delete', 'addons') || has('addons:delete'))
+// Forms
 const productForm = reactive({
   productName: '',
   productPrice: 0,
@@ -642,130 +159,49 @@ const productForm = reactive({
   allowedAddonCategories: [],
 })
 
-const categoryForm = reactive({ name: '', description: '' })
-const addonForm = reactive({
-  name: '',
-  category: '',
-  price: 0,
-  stock: null,
-  status: 'Available',
-})
-const addonCategoryForm = reactive({ name: '', description: '' })
 const productImageFile = ref(null)
 const productImagePreview = ref('')
 
-const clearImage = () => {
-  productImageFile.value = null
-  productImagePreview.value = ''
-  productForm.productImage = ''
-}
+// Computed Permissions
+const has = (perm) =>
+  authStore.isSuperAdmin ||
+  authStore.permissions.includes('*') ||
+  authStore.permissions.includes(perm)
 
-const handleImageSelect = (file) => {
-  if (!file) {
-    productImagePreview.value = ''
-    return
-  }
+const canAddCategory = computed(
+  () => authStore.can('addCategory', 'inventory') || has('inventory:addCategory'),
+)
 
-  // Check if file is an image
-  if (!file.type.startsWith('image/')) {
-    $q.notify({
-      color: 'negative',
-      message: 'Please select an image file',
-      icon: 'warning',
-    })
-    productImageFile.value = null
-    productImagePreview.value = ''
-    return
-  }
+const canAddProduct = computed(
+  () => authStore.can('addProduct', 'inventory') || has('inventory:addProduct'),
+)
 
-  // Check file size (limit to 5MB)
-  if (file.size > 5 * 1024 * 1024) {
-    $q.notify({
-      color: 'negative',
-      message: 'Image size should be less than 5MB',
-      icon: 'warning',
-    })
-    productImageFile.value = null
-    productImagePreview.value = ''
-    return
-  }
+const canEditProduct = computed(
+  () => authStore.can('editProduct', 'inventory') || has('inventory:editProduct'),
+)
 
-  // Create preview
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    productImagePreview.value = e.target.result
-  }
-  reader.onerror = () => {
-    $q.notify({
-      color: 'negative',
-      message: 'Error reading image file',
-      icon: 'error',
-    })
-    productImageFile.value = null
-    productImagePreview.value = ''
-  }
-  reader.readAsDataURL(file)
-}
+const canDeleteProduct = computed(
+  () => authStore.can('deleteProduct', 'inventory') || has('inventory:deleteProduct'),
+)
 
-watch(productImageFile, (file) => {
-  if (file) {
-    handleImageSelect(file)
-  } else {
-    productImagePreview.value = ''
-  }
-})
-
-const columns = [
-  { name: 'name', label: 'Product Name', field: 'productName', align: 'left', sortable: true },
-  { name: 'category', label: 'Category', field: 'productCategory', align: 'left', sortable: true },
-  {
-    name: 'price',
-    label: 'Price',
-    field: 'productPrice',
-    align: 'right',
-    sortable: true,
-    format: (val) => `₱${Number(val).toFixed(2)}`,
-  },
-  {
-    name: 'cost',
-    label: 'Cost',
-    field: 'productCost',
-    align: 'right',
-    sortable: true,
-    format: (val) => `₱${Number(val).toFixed(2)}`,
-  },
-  { name: 'actions', label: 'Actions', field: 'actions', align: 'center' },
-]
-const addonColumns = [
-  { name: 'name', label: 'Add-On Name', field: 'name', align: 'left', sortable: true },
-  { name: 'category', label: 'Category', field: 'category', align: 'left', sortable: true },
-  {
-    name: 'price',
-    label: 'Price',
-    field: 'price',
-    align: 'right',
-    sortable: true,
-    format: (v) => `₱${Number(v || 0).toFixed(2)}`,
-  },
-  { name: 'stock', label: 'Stock', field: 'stock', align: 'center', sortable: true },
-  { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
-  { name: 'actions', label: 'Actions', field: 'actions', align: 'center' },
-]
-
-onMounted(() => {
-  productStore.fetchProducts()
-  categoryStore.fetchCategories()
-  addonStore.fetchAddons()
-  addonStore.fetchAddonCategories()
-})
+// --- ADDONS PERMISSIONS ---
+// Added the view permission check
+const canViewAddons = computed(() => authStore.can('view', 'addons') || has('addons:view'))
+const canAddAddon = computed(() => authStore.can('add', 'addons') || has('addons:create'))
+const canEditAddon = computed(() => authStore.can('edit', 'addons') || has('addons:edit'))
+const canDeleteAddon = computed(() => authStore.can('delete', 'addons') || has('addons:delete'))
 
 const categoryOptions = computed(() => [
   'All',
   ...(categoryStore.categories || []).map((c) => c.name),
 ])
+
 const categoriesForForm = computed(() => (categoryStore.categories || []).map((c) => c.name))
+
 const addonCategoryOptions = computed(() => (addonStore.addonCategories || []).map((c) => c.name))
+
 const statusOptions = ['Available', 'Unavailable']
+
 const addonOptions = computed(() => {
   const cats = productForm.allowedAddonCategories || []
   const list = (addonStore.addons || []).filter(
@@ -773,18 +209,12 @@ const addonOptions = computed(() => {
   )
   return list.map((a) => ({ label: a.name, value: a.id, category: a.category }))
 })
+
 const selectedAddonAvailability = ref('All')
 const selectedAddonCategory = ref('All')
 const addonAvailabilityOptions = ['All', 'Available', 'Unavailable']
 const addonCategoryFilterOptions = computed(() => ['All', ...addonCategoryOptions.value])
-const showExportDialog = ref(false)
-const exportFormat = ref('csv')
-const formatOptions = [
-  { label: 'CSV', value: 'csv' },
-  { label: 'PDF', value: 'pdf' },
-]
-const exportUseTableFilters = ref(true)
-const exportCategory = ref('All')
+
 const specificAddonsHint = computed(() => {
   const cats = productForm.allowedAddonCategories || []
   const count = addonOptions.value.length
@@ -827,6 +257,18 @@ const filteredAddons = computed(() => {
   return list
 })
 
+// Lifecycle
+onMounted(() => {
+  productStore.fetchProducts()
+  categoryStore.fetchCategories()
+  // Only fetch addons if user has permission (optimization)
+  if (canViewAddons.value) {
+    addonStore.fetchAddons()
+    addonStore.fetchAddonCategories()
+  }
+})
+
+// Watchers
 watch(
   () => productForm.allowedAddonCategories,
   (cats) => {
@@ -842,6 +284,18 @@ watch(
   { deep: true },
 )
 
+// Security Watcher: Redirect if user is on addons tab but permission is revoked
+watch(
+  [selectedInventoryTab, canViewAddons],
+  ([tab, hasPerm]) => {
+    if (tab === 'addons' && !hasPerm) {
+      selectedInventoryTab.value = 'products'
+    }
+  },
+  { immediate: true },
+)
+
+// Methods
 const openEditDialog = (product) => {
   editingProduct.value = product
   Object.assign(productForm, {
@@ -856,7 +310,6 @@ const openEditDialog = (product) => {
       : [],
   })
 
-  // Clear any previous image file and preview
   productImageFile.value = null
   productImagePreview.value = ''
 
@@ -865,42 +318,16 @@ const openEditDialog = (product) => {
 
 const openEditAddonDialog = (addon) => {
   editingAddon.value = addon
-  Object.assign(addonForm, {
-    name: addon.name,
-    category: addon.category,
-    price: addon.price,
-    stock: addon.stock,
-    status: addon.status,
-  })
   showAddAddonDialog.value = true
 }
 
-const submitForm = async () => {
-  const success = await myForm.value.validate()
-
-  if (success) {
-    await handleSaveProduct()
-  } else {
-    $q.notify({
-      color: 'negative',
-      message: 'Please fill in all required fields.',
-      icon: 'warning',
-    })
-  }
-}
-
-const handleSaveProduct = async () => {
+const handleSaveProduct = async (formData) => {
   try {
-    // Use the preview image if a new image was selected
-    if (productImagePreview.value) {
-      productForm.productImage = productImagePreview.value
-    }
-
     if (editingProduct.value) {
-      await productStore.updateProduct(editingProduct.value.id, { ...productForm })
+      await productStore.updateProduct(editingProduct.value.id, formData)
       $q.notify({ color: 'positive', message: 'Product updated successfully', icon: 'check' })
     } else {
-      await productStore.addProduct({ ...productForm })
+      await productStore.addProduct(formData)
       $q.notify({ color: 'positive', message: 'Product added successfully', icon: 'add' })
     }
     closeProductDialog()
@@ -910,22 +337,50 @@ const handleSaveProduct = async () => {
   }
 }
 
-const submitAddon = async () => {
-  const ok = await addonFormRef.value.validate()
-  if (!ok) {
-    $q.notify({ color: 'negative', message: 'Please fill all required fields', icon: 'warning' })
-    return
-  }
-  await handleSaveAddon()
+const confirmDelete = (product) => {
+  $q.dialog({
+    title: 'Delete Product',
+    message: `Are you sure you want to remove ${product.productName}?`,
+    cancel: true,
+    persistent: true,
+  }).onOk(async () => {
+    try {
+      await productStore.deleteProduct(product.id)
+      $q.notify({ color: 'positive', message: 'Product deleted successfully', icon: 'delete' })
+    } catch {
+      $q.notify({ color: 'negative', message: 'Error deleting product', icon: 'report_problem' })
+    }
+  })
 }
 
-const handleSaveAddon = async () => {
+const clearImage = () => {
+  productImageFile.value = null
+  productImagePreview.value = ''
+  productForm.productImage = ''
+}
+
+const closeProductDialog = () => {
+  showAddProductDialog.value = false
+  editingProduct.value = null
+  Object.assign(productForm, {
+    productName: '',
+    productPrice: 0,
+    productCost: 0,
+    productCategory: '',
+    productImage: '',
+    allowedAddons: [],
+    allowedAddonCategories: [],
+  })
+  clearImage()
+}
+
+const handleSaveAddon = async (formData) => {
   try {
     if (editingAddon.value) {
-      await addonStore.updateAddon(editingAddon.value.id, { ...addonForm })
+      await addonStore.updateAddon(editingAddon.value.id, formData)
       $q.notify({ color: 'positive', message: 'Add-on updated', icon: 'check' })
     } else {
-      await addonStore.addAddon({ ...addonForm })
+      await addonStore.addAddon(formData)
       $q.notify({ color: 'positive', message: 'Add-on added', icon: 'add' })
     }
     closeAddonDialog()
@@ -954,45 +409,6 @@ const confirmDeleteAddon = (addon) => {
 const closeAddonDialog = () => {
   showAddAddonDialog.value = false
   editingAddon.value = null
-  Object.assign(addonForm, {
-    name: '',
-    category: '',
-    price: 0,
-    stock: null,
-    status: 'Available',
-  })
-}
-
-const confirmDelete = (product) => {
-  $q.dialog({
-    title: 'Delete Product',
-    message: `Are you sure you want to remove ${product.productName}?`,
-    cancel: true,
-    persistent: true,
-  }).onOk(async () => {
-    try {
-      await productStore.deleteProduct(product.id)
-      $q.notify({ color: 'positive', message: 'Product deleted successfully', icon: 'delete' })
-    } catch {
-      $q.notify({ color: 'negative', message: 'Error deleting product', icon: 'report_problem' })
-    }
-  })
-}
-
-const closeProductDialog = () => {
-  showAddProductDialog.value = false
-  editingProduct.value = null
-  // Reset form to default values
-  Object.assign(productForm, {
-    productName: '',
-    productPrice: 0,
-    productCost: 0,
-    productCategory: '',
-    productImage: '',
-    allowedAddons: [],
-    allowedAddonCategories: [],
-  })
-  clearImage()
 }
 
 const getRowsForExport = () => {
@@ -1104,18 +520,22 @@ const exportInventoryPDF = () => {
   })
 }
 
-const executeExport = () => {
+const executeExport = (params) => {
+  exportFormat.value = params.format
+  exportUseTableFilters.value = params.useFilters
+  exportCategory.value = params.category
   showExportDialog.value = false
-  if (exportFormat.value === 'pdf') {
+
+  if (params.format === 'pdf') {
     exportInventoryPDF()
   } else {
     exportInventoryCSV()
   }
 }
 
-const handleSaveCategory = async () => {
+const handleSaveCategory = async (formData) => {
   try {
-    if (!categoryForm.name) {
+    if (!formData.name) {
       $q.notify({
         color: 'negative',
         message: 'Category name is required',
@@ -1124,7 +544,7 @@ const handleSaveCategory = async () => {
       return
     }
 
-    await categoryStore.addCategory({ ...categoryForm })
+    await categoryStore.addCategory(formData)
 
     $q.notify({
       color: 'positive',
@@ -1143,18 +563,18 @@ const handleSaveCategory = async () => {
     })
   }
 }
+
 const closeCategoryDialog = () => {
   showAddCategoryDialog.value = false
-  Object.assign(categoryForm, { name: '', description: '' })
 }
 
-const handleSaveAddonCategory = async () => {
+const handleSaveAddonCategory = async (formData) => {
   try {
-    if (!addonCategoryForm.name) {
+    if (!formData.name) {
       $q.notify({ color: 'negative', message: 'Name is required', icon: 'warning' })
       return
     }
-    await addonStore.addAddonCategory({ ...addonCategoryForm })
+    await addonStore.addAddonCategory(formData)
     $q.notify({ color: 'positive', message: 'Add-on category added', icon: 'category' })
     closeAddonCategoryDialog()
     await addonStore.fetchAddonCategories()
@@ -1167,9 +587,9 @@ const handleSaveAddonCategory = async () => {
     })
   }
 }
+
 const closeAddonCategoryDialog = () => {
   showAddAddonCategoryDialog.value = false
-  Object.assign(addonCategoryForm, { name: '', description: '' })
 }
 </script>
 
@@ -1182,12 +602,5 @@ const closeAddonCategoryDialog = () => {
 }
 .catalog-card .text-weight-bold {
   font-size: 13px;
-}
-
-/* Responsive adjustments for the modal */
-@media (max-width: 600px) {
-  .q-card {
-    min-width: 90vw !important;
-  }
 }
 </style>

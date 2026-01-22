@@ -5,20 +5,35 @@
         <div class="row items-center justify-between q-mb-md">
           <div>
             <div class="text-h5 text-weight-bold text-blue-grey-9">User Management</div>
-            <div class="text-caption text-grey-7">Manage and track user accounts</div>
+            <div class="text-caption text-grey-7">Manage users, access, and roles</div>
           </div>
 
-          <div v-if="canAddUser">
+          <div class="row q-gutter-sm">
             <q-btn
-              color="primary"
-              icon="add"
-              label="Add New User"
-              @click="showAddUserPanel = true"
+              v-if="canManagePermissions"
+              color="secondary"
+              icon="settings"
+              label="Manage Roles"
+              @click="showRoleManager = true"
+              outline
             />
+
+            <div v-if="canAddUser">
+              <q-btn
+                color="primary"
+                icon="add"
+                label="Add New User"
+                @click="showAddUserPanel = true"
+              />
+            </div>
           </div>
         </div>
 
-        <AddNewUser v-model="showAddUserPanel" @add="handleAddUser" />
+        <AddNewUser v-model="showAddUserPanel" @add="refreshData" />
+
+        <q-dialog v-model="showRoleManager" full-width style="max-width: 1200px">
+          <RoleManager />
+        </q-dialog>
 
         <UserList
           :users="users"
@@ -28,53 +43,15 @@
           :can-manage-roles="canManagePermissions"
           :can-edit-user="canEditUser"
           :can-delete-user="canDeleteUser"
-          @manage-roles="addRolesToUser"
-          @edit="editUser"
+          @manage-roles="openManageUserDialog"
+          @edit="openManageUserDialog"
           @delete="confirmDeleteUser"
         />
 
-        <q-dialog v-model="editDialog" persistent>
-          <q-card style="min-width: 400px">
-            <q-card-section>
-              <div class="text-h6">Edit User</div>
-            </q-card-section>
-            <q-card-section class="q-pt-none">
-              <q-input
-                outlined
-                v-model="editingUser.username"
-                label="Username"
-                class="q-mb-md"
-                :rules="[(val) => !!val || 'Username is required']"
-                lazy-rules
-              />
-              <q-input
-                outlined
-                v-model="editingUser.password"
-                label="Password"
-                :type="showEditPassword ? 'text' : 'password'"
-                class="q-mb-md"
-              >
-                <template v-slot:append>
-                  <q-icon
-                    :name="showEditPassword ? 'visibility_off' : 'visibility'"
-                    class="cursor-pointer"
-                    @click="showEditPassword = !showEditPassword"
-                  />
-                </template>
-              </q-input>
-            </q-card-section>
-            <q-card-actions align="right">
-              <q-btn flat label="Cancel" color="grey" v-close-popup />
-              <q-btn label="Save" color="primary" @click="saveUserEdit" />
-            </q-card-actions>
-          </q-card>
-        </q-dialog>
-
         <ManageUserRoles
-          v-model="addRolesDialog"
+          v-model="manageUserDialog"
           :selected-user="selectedUser"
-          :available-roles="availableRoles"
-          @save="handleSaveAddedRoles"
+          @updated="refreshData"
         />
 
         <q-dialog v-model="deleteDialog" persistent>
@@ -85,7 +62,7 @@
             </q-card-section>
             <q-card-actions align="right">
               <q-btn flat label="Cancel" color="grey" v-close-popup />
-              <q-btn label="Delete" color="negative" @click="deleteUser" />
+              <q-btn label="Delete" color="negative" @click="deleteUser" :loading="loading" />
             </q-card-actions>
           </q-card>
         </q-dialog>
@@ -96,33 +73,31 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 
-// Import Components
+// --- Imports ---
 import AddNewUser from 'src/components/Usermanagement/AddNewUser.vue'
 import UserList from 'src/components/Usermanagement/UserList.vue'
-import ManageUserRoles from 'src/components/Usermanagement/ManageUserRoles.vue'
+import ManageUserRoles from 'src/components/Usermanagement/ManageUserRole.vue'
+import RoleManager from 'src/components/Usermanagement/RoleManager.vue' // <--- NEW IMPORT
 
 import { useUserManagementStore } from 'src/stores/usermanagementStore.js'
 import { useAuthStore } from 'src/features/index.js'
 
 const $q = useQuasar()
-const router = useRouter()
 const userStore = useUserManagementStore()
 const authStore = useAuthStore()
 
+// --- State ---
 const users = computed(() => userStore.users)
 const loading = computed(() => userStore.loading)
 
-// --- Dialog State ---
-const showAddUserPanel = ref(false) // <--- Controls the new AddUser Side Panel
-const editDialog = ref(false)
-const addRolesDialog = ref(false)
+// Dialog Controls
+const showAddUserPanel = ref(false)
+const showRoleManager = ref(false) // <--- NEW STATE
+const manageUserDialog = ref(false)
 const deleteDialog = ref(false)
 
-const showEditPassword = ref(false)
-const editingUser = ref({})
 const selectedUser = ref(null)
 const userToDelete = ref(null)
 
@@ -145,16 +120,13 @@ const canManagePermissions = computed(
   () => authStore.can('assign', 'userManagement') || has('userManagement:assign'),
 )
 
-// Available roles for table (optional)
+// --- Dynamic Roles from Store ---
 const availableRoles = computed(() => {
-  return router
-    .getRoutes()
-    .filter((r) => r.meta?.isSidebarItem)
-    .map((r) => ({
-      label: r.meta?.label || r.name,
-      value: r.name,
-      caption: r.meta?.caption || '',
-    }))
+  return userStore.roles.map((r) => ({
+    label: r.label || r.name,
+    value: r.value,
+    caption: r.description || '',
+  }))
 })
 
 const pagination = ref({
@@ -166,65 +138,18 @@ const pagination = ref({
 
 // --- Methods ---
 
-const handleAddUser = async () => {
+const refreshData = async () => {
   try {
-    await userStore.fetchUsers() // Refresh list after adding
-    // The panel closes itself inside AddNewUser
+    await Promise.all([userStore.fetchUsers(), userStore.fetchRoles()])
   } catch (e) {
     console.error(e)
   }
 }
 
-const editUser = (user) => {
-  editingUser.value = { ...user }
-  editDialog.value = true
-}
-
-const saveUserEdit = async () => {
-  try {
-    await userStore.updateUser(editingUser.value.id, {
-      username: editingUser.value.username,
-      password: editingUser.value.password,
-    })
-    editDialog.value = false
-    $q.notify({ type: 'positive', message: 'User updated successfully', icon: 'check_circle' })
-    await userStore.fetchUsers()
-  } catch (e) {
-    console.error(e)
-    $q.notify({ type: 'negative', message: 'Failed to update user', icon: 'error' })
-  }
-}
-
-const addRolesToUser = (user) => {
+// Opens the unified Edit/Permissions dialog
+const openManageUserDialog = (user) => {
   selectedUser.value = { ...user }
-  addRolesDialog.value = true
-}
-
-const handleSaveAddedRoles = async (permissions) => {
-  if (!selectedUser.value) return
-  try {
-    const uniquePerms = Array.from(new Set(permissions))
-    await userStore.updateUser(selectedUser.value.id, { permissions: uniquePerms })
-
-    if (
-      authStore.user?.uid &&
-      (selectedUser.value.uid === authStore.user.uid ||
-        selectedUser.value.email === authStore.user.email)
-    ) {
-      authStore.setPermissions(uniquePerms)
-    }
-
-    addRolesDialog.value = false
-    $q.notify({
-      type: 'positive',
-      message: `Updated permissions for ${selectedUser.value.username}`,
-      icon: 'check_circle',
-    })
-    await userStore.fetchUsers()
-  } catch (e) {
-    console.error(e)
-    $q.notify({ type: 'negative', message: 'Failed to update permissions', icon: 'error' })
-  }
+  manageUserDialog.value = true
 }
 
 const confirmDeleteUser = (user) => {
@@ -243,8 +168,9 @@ const deleteUser = async () => {
   }
 }
 
+// --- Lifecycle ---
 onMounted(async () => {
-  await userStore.fetchUsers()
+  await refreshData()
 })
 </script>
 

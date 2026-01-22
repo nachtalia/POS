@@ -2,91 +2,42 @@
   <q-dialog v-model="localDialog" persistent position="right" full-height>
     <q-card class="column" style="width: 450px; max-width: 100vw; height: 100vh">
       <q-card-section class="row items-center justify-between bg-primary text-white q-py-md">
-        <div class="text-h6">Add New User</div>
+        <div class="row items-center">
+          <q-icon name="verified_user" class="q-mr-sm" size="sm" />
+          <div class="text-h6">Create New Role</div>
+        </div>
         <q-btn flat round dense icon="close" color="white" v-close-popup size="sm" />
       </q-card-section>
 
       <q-card-section class="col scroll q-pa-md">
         <div class="q-mb-md">
-          <div class="text-subtitle2 text-weight-medium text-blue-grey-9 q-mb-sm">
-            User Credentials
-          </div>
+          <div class="text-subtitle2 text-weight-medium text-blue-grey-9 q-mb-sm">Role Details</div>
           <div class="q-gutter-y-sm">
             <q-input
               outlined
-              v-model="username"
-              label="Username"
+              v-model="roleName"
+              label="Role Name"
+              placeholder="e.g. Supervisor"
               dense
               lazy-rules
               :rules="[(val) => !!val || 'Required']"
             >
-              <template v-slot:prepend><q-icon name="person" /></template>
+              <template v-slot:prepend><q-icon name="badge" /></template>
             </q-input>
+
             <q-input
               outlined
-              v-model="email"
-              label="Email"
-              type="email"
+              v-model="roleDescription"
+              label="Description"
+              placeholder="Brief description of access level"
               dense
-              :rules="[(val) => /.+@.+\..+/.test(val) || 'Invalid email']"
-            >
-              <template v-slot:prepend><q-icon name="email" /></template>
-            </q-input>
-            <q-input
-              outlined
-              v-model="password"
-              label="Password"
-              :type="showPassword ? 'text' : 'password'"
-              dense
-              :rules="[(val) => val.length >= 6 || 'Min 6 characters']"
-            >
-              <template v-slot:prepend><q-icon name="lock" /></template>
-              <template v-slot:append>
-                <q-icon
-                  :name="showPassword ? 'visibility_off' : 'visibility'"
-                  class="cursor-pointer"
-                  size="xs"
-                  @click="showPassword = !showPassword"
-                />
-              </template>
-            </q-input>
+              type="textarea"
+              rows="2"
+            />
           </div>
         </div>
 
         <q-separator spaced />
-
-        <div class="q-mb-md">
-          <div class="text-subtitle2 text-weight-medium text-blue-grey-9 q-mb-xs">
-            Quick Role Assignment
-          </div>
-          <q-select
-            outlined
-            dense
-            v-model="selectedRole"
-            :options="userRoles"
-            label="Select Role Template"
-            emit-value
-            map-options
-            @update:model-value="applyRoleTemplate"
-            color="primary"
-            bg-color="blue-grey-1"
-          >
-            <template v-slot:prepend><q-icon name="badge" /></template>
-            <template v-slot:option="scope">
-              <q-item v-bind="scope.itemProps">
-                <q-item-section>
-                  <q-item-label>{{ scope.opt.label }}</q-item-label>
-                  <q-item-label caption v-if="scope.opt.permissions">
-                    {{ scope.opt.permissions.length }} permissions
-                  </q-item-label>
-                </q-item-section>
-              </q-item>
-            </template>
-          </q-select>
-          <div class="text-caption text-grey-7 q-mt-xs">
-            Selecting a role template will auto-fill permissions.
-          </div>
-        </div>
 
         <div class="q-mb-md">
           <div class="text-subtitle2 text-weight-medium text-blue-grey-9 q-mb-xs">
@@ -109,7 +60,7 @@
               v-if="!selectedPermissions.length"
               class="text-caption text-grey-6 text-center q-pa-sm"
             >
-              No permissions assigned yet
+              No permissions selected
             </div>
           </div>
         </div>
@@ -118,23 +69,16 @@
 
         <div class="q-mb-md">
           <div class="text-subtitle2 text-weight-medium text-blue-grey-9 q-mb-xs">
-            Manual Customization
+            Permission Selection
           </div>
+
           <div class="row q-col-gutter-xs q-mb-sm">
             <q-btn
               outline
               size="sm"
               color="primary"
-              label="Select All"
-              @click="selectAllPermissions"
-              class="col"
-            />
-            <q-btn
-              outline
-              size="sm"
-              color="grey"
-              label="Clear All"
-              @click="clearAllPermissions"
+              :label="isAllSelected ? 'Unselect All' : 'Select All'"
+              @click="toggleGlobalSelect"
               class="col"
             />
           </div>
@@ -143,17 +87,32 @@
             <q-expansion-item
               v-for="(actions, page) in actionsByPage"
               :key="page"
-              :label="page"
               header-class="bg-grey-1"
               expand-separator
+              default-opened
             >
-              <q-item v-for="action in actions" :key="action.value" dense>
+              <template v-slot:header>
+                <q-item-section>
+                  <span class="text-weight-bold">{{ page }}</span>
+                </q-item-section>
+                <q-item-section side>
+                  <q-checkbox
+                    :model-value="getCategoryState(page)"
+                    :indeterminate="getCategoryIndeterminate(page)"
+                    @click.stop="toggleCategory(page)"
+                    dense
+                    color="primary"
+                  />
+                </q-item-section>
+              </template>
+
+              <q-item v-for="action in actions" :key="action.value" dense tag="label" clickable>
                 <q-item-section avatar>
                   <q-checkbox
                     v-model="selectedPermissions"
                     :val="action.value"
                     color="primary"
-                    @update:model-value="selectedRole = null"
+                    dense
                   />
                 </q-item-section>
                 <q-item-section>
@@ -171,12 +130,12 @@
       <q-card-actions align="right" class="q-pa-md bg-grey-1">
         <q-btn flat label="Cancel" color="grey" v-close-popup class="q-px-lg" />
         <q-btn
-          label="Create User"
+          label="Save Role"
           color="green-7"
-          @click="submit"
-          :disable="!isFormValid"
+          icon="save"
+          @click="submitRole"
+          :disable="!roleName || selectedPermissions.length === 0"
           :loading="loading"
-          icon="person_add"
           class="q-px-lg"
         />
       </q-card-actions>
@@ -186,40 +145,25 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { useQuasar } from 'quasar'
 import { useUserManagementStore } from 'src/stores/usermanagementStore.js'
+import { useQuasar } from 'quasar'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['update:modelValue', 'add'])
+const emit = defineEmits(['update:modelValue', 'created'])
 
 const $q = useQuasar()
 const userStore = useUserManagementStore()
 
 const localDialog = ref(props.modelValue)
+const roleName = ref('')
+const roleDescription = ref('')
+const selectedPermissions = ref([])
 const loading = ref(false)
 
-// Form Fields
-const username = ref('')
-const email = ref('')
-const password = ref('')
-const showPassword = ref(false)
-const selectedRole = ref(null)
-const selectedPermissions = ref([])
-
-// --- Dynamic Role Definitions from Store ---
-const userRoles = computed(() => {
-  return userStore.roles.map((role) => ({
-    label: role.label || role.name,
-    value: role.value,
-    description: role.description || '',
-    permissions: role.permissions || [],
-  }))
-})
-
-// --- Permissions Definitions (System Constants) ---
+// --- CONFIGURATION ---
 const actionsByPage = {
   Dashboard: [{ label: 'View Dashboard', value: 'dashboard:view' }],
   Products: [
@@ -250,73 +194,82 @@ const actionsByPage = {
   ],
 }
 
-// --- Logic to Apply Dynamic Role ---
-const applyRoleTemplate = (roleValue) => {
-  const roleObj = userRoles.value.find((r) => r.value === roleValue)
+const allPermissionValues = Object.values(actionsByPage)
+  .flat()
+  .map((p) => p.value)
 
-  if (roleObj) {
-    if (roleObj.permissions.includes('*')) {
-      // Select ALL available permissions
-      selectedPermissions.value = Object.values(actionsByPage)
-        .flat()
-        .map((a) => a.value)
-    } else {
-      selectedPermissions.value = [...roleObj.permissions]
-    }
+// --- COMPUTED HELPERS ---
+const isAllSelected = computed(
+  () => selectedPermissions.value.length === allPermissionValues.length,
+)
+
+// Check if all items in a category are selected
+const getCategoryState = (categoryKey) => {
+  const catActions = actionsByPage[categoryKey].map((a) => a.value)
+  return catActions.every((p) => selectedPermissions.value.includes(p))
+}
+
+// Check if some (but not all) items in a category are selected
+const getCategoryIndeterminate = (categoryKey) => {
+  const catActions = actionsByPage[categoryKey].map((a) => a.value)
+  const selectedCount = catActions.filter((p) => selectedPermissions.value.includes(p)).length
+  return selectedCount > 0 && selectedCount < catActions.length
+}
+
+// --- METHODS ---
+const toggleGlobalSelect = () => {
+  selectedPermissions.value = isAllSelected.value ? [] : [...allPermissionValues]
+}
+
+const toggleCategory = (categoryKey) => {
+  const catActions = actionsByPage[categoryKey].map((a) => a.value)
+  const isCurrentlyFull = getCategoryState(categoryKey)
+
+  if (isCurrentlyFull) {
+    // Unselect all in this category
+    selectedPermissions.value = selectedPermissions.value.filter((p) => !catActions.includes(p))
+  } else {
+    // Select all in this category (merge unique)
+    const newPerms = catActions.filter((p) => !selectedPermissions.value.includes(p))
+    selectedPermissions.value = [...selectedPermissions.value, ...newPerms]
   }
-}
-
-// --- Helper Functions ---
-const selectAllPermissions = () => {
-  selectedPermissions.value = Object.values(actionsByPage)
-    .flat()
-    .map((a) => a.value)
-  selectedRole.value = null
-}
-
-const clearAllPermissions = () => {
-  selectedPermissions.value = []
-  selectedRole.value = null
 }
 
 const removePermission = (perm) => {
   selectedPermissions.value = selectedPermissions.value.filter((p) => p !== perm)
-  selectedRole.value = null
 }
 
-const isFormValid = computed(() => {
-  return (
-    username.value.length > 0 &&
-    /.+@.+\..+/.test(email.value) &&
-    password.value.length >= 6 &&
-    selectedPermissions.value.length > 0
-  )
-})
-
 const resetForm = () => {
-  username.value = ''
-  email.value = ''
-  password.value = ''
-  selectedRole.value = null
+  roleName.value = ''
+  roleDescription.value = ''
   selectedPermissions.value = []
 }
 
-const submit = async () => {
+const submitRole = async () => {
+  if (!roleName.value) return
+
   loading.value = true
   try {
-    await userStore.addUser({
-      username: username.value,
-      email: email.value,
-      password: password.value,
+    const newRole = {
+      name: roleName.value,
+      description: roleDescription.value,
+      value: roleName.value.toLowerCase().replace(/\s+/g, '_'),
       permissions: selectedPermissions.value,
-      role: selectedRole.value || 'custom',
+    }
+
+    await userStore.createRole(newRole)
+
+    $q.notify({
+      type: 'positive',
+      message: `Role "${roleName.value}" created!`,
+      icon: 'check_circle',
     })
-    $q.notify({ type: 'positive', message: 'User created successfully', icon: 'check_circle' })
-    emit('add')
+
+    emit('created')
     localDialog.value = false
-  } catch (error) {
-    console.error(error)
-    $q.notify({ type: 'negative', message: 'Error creating user', icon: 'error' })
+  } catch (e) {
+    console.error(e)
+    $q.notify({ type: 'negative', message: 'Failed to create role', icon: 'error' })
   } finally {
     loading.value = false
   }
