@@ -8,15 +8,20 @@ import {
   doc,
   updateDoc,
   Timestamp,
+  query,
+  where,
+  orderBy,
 } from 'firebase/firestore'
 import { Addon } from '../services/models/Addon'
 import { Category } from '../services/models/Category'
-import { logAudit } from '../services/auditService'
+// IMPORT logEditAndGetDiff here
+import { logAudit, logEditAndGetDiff } from '../services/auditService'
 
 export const useAddonStore = defineStore('addonStore', {
   state: () => ({
     addons: [],
     addonCategories: [],
+    history: [],
     loading: false,
   }),
 
@@ -32,6 +37,7 @@ export const useAddonStore = defineStore('addonStore', {
         this.loading = false
       }
     },
+
     async fetchAddonCategories() {
       try {
         const snap = await getDocs(collection(db, 'addonCategories'))
@@ -40,12 +46,32 @@ export const useAddonStore = defineStore('addonStore', {
         console.error('Error fetching addon categories:', e)
       }
     },
+
+    async fetchHistory(entityId) {
+      this.loading = true
+      this.history = []
+      try {
+        const historyRef = collection(db, 'audit_logs')
+        const q = query(historyRef, where('entityId', '==', entityId), orderBy('timestamp', 'desc'))
+        const snapshot = await getDocs(q)
+        this.history = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }))
+      } catch (e) {
+        console.error('Error fetching history:', e)
+      } finally {
+        this.loading = false
+      }
+    },
+
     async addAddonCategory(data) {
       try {
         const cat = new Category(data)
         const ref = await addDoc(collection(db, 'addonCategories'), cat.toFirestore())
         cat.id = ref.id
         this.addonCategories.push(cat)
+
         await logAudit({
           module: 'inventory',
           action: 'add',
@@ -58,10 +84,12 @@ export const useAddonStore = defineStore('addonStore', {
         throw e
       }
     },
+
     async deleteAddonCategory(id) {
       try {
         await deleteDoc(doc(db, 'addonCategories', id))
         this.addonCategories = this.addonCategories.filter((c) => c.id !== id)
+
         await logAudit({
           module: 'inventory',
           action: 'delete',
@@ -74,12 +102,14 @@ export const useAddonStore = defineStore('addonStore', {
         throw e
       }
     },
+
     async addAddon(data) {
       try {
         const addon = new Addon(data)
         const ref = await addDoc(collection(db, 'addons'), addon.toFirestore())
         addon.id = ref.id
         this.addons.push(addon)
+
         await logAudit({
           module: 'inventory',
           action: 'add',
@@ -92,10 +122,17 @@ export const useAddonStore = defineStore('addonStore', {
         throw e
       }
     },
+
     async updateAddon(id, partial) {
       try {
         const payload = { ...partial, updatedAt: Timestamp.now() }
+
+        // --- CHANGED: Log the diff BEFORE updating ---
+        // 'addons' is the collection name
+        await logEditAndGetDiff('addons', id, payload, 'inventory', 'addon')
+
         await updateDoc(doc(db, 'addons', id), payload)
+
         const idx = this.addons.findIndex((a) => a.id === id)
         if (idx !== -1) {
           const updated = new Addon({
@@ -105,22 +142,17 @@ export const useAddonStore = defineStore('addonStore', {
           })
           this.addons[idx] = updated
         }
-        await logAudit({
-          module: 'inventory',
-          action: 'edit',
-          entityType: 'addon',
-          entityId: id,
-          details: payload,
-        })
       } catch (e) {
         console.error('Error updating addon:', e)
         throw e
       }
     },
+
     async deleteAddon(id) {
       try {
         await deleteDoc(doc(db, 'addons', id))
         this.addons = this.addons.filter((a) => a.id !== id)
+
         await logAudit({
           module: 'inventory',
           action: 'delete',
