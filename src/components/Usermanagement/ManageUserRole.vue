@@ -15,7 +15,7 @@
             User Credentials
           </div>
 
-          <div class="q-gutter-y-sm">
+          <q-form ref="formRef" class="q-gutter-y-sm">
             <q-input
               outlined
               dense
@@ -41,9 +41,12 @@
               outlined
               dense
               v-model="password"
-              label="Password"
+              label="New Password"
               :type="showPassword ? 'text' : 'password'"
               hint="Leave blank to keep current password"
+              :rules="[
+                (val) => !val || val.length >= 6 || 'Password must be at least 6 characters',
+              ]"
             >
               <template v-slot:prepend><q-icon name="lock" /></template>
               <template v-slot:append>
@@ -54,7 +57,7 @@
                 />
               </template>
             </q-input>
-          </div>
+          </q-form>
         </div>
 
         <q-separator class="q-mb-md" />
@@ -224,16 +227,15 @@ const authStore = useAuthStore()
 
 const localDialog = ref(props.modelValue)
 const loading = ref(false)
+const formRef = ref(null)
 
-// --- Fields ---
+//Fields
 const username = ref('')
 const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
 const selectedRole = ref(null)
 const selectedPermissions = ref([])
-
-// --- Configuration ---
 
 // 1. Dynamic Roles from Store
 const userRoles = computed(() => {
@@ -274,13 +276,15 @@ const actionsByPage = {
   ],
 }
 
-// --- Logic: Fetch Data on Open ---
+// Logic: Fetch Data on Open
 watch(
   () => props.selectedUser,
   (newUser) => {
     if (newUser) {
       username.value = newUser.username || ''
       email.value = newUser.email || ''
+
+      // Reset password field specifically
       password.value = ''
 
       if (Array.isArray(newUser.permissions)) {
@@ -288,18 +292,15 @@ watch(
       } else {
         selectedPermissions.value = []
       }
-
-      // --- FIX: Load the existing role instead of setting to null ---
       selectedRole.value = newUser.role || null
     }
   },
   { immediate: true, deep: true },
 )
 
-// --- Dynamic Role Application ---
+// Dynamic Role Application
 const applyRoleTemplate = (roleValue) => {
   const selectedRoleObj = userRoles.value.find((r) => r.value === roleValue)
-
   if (selectedRoleObj) {
     if (selectedRoleObj.permissions.includes('*')) {
       selectedPermissions.value = Object.values(actionsByPage)
@@ -315,17 +316,14 @@ const selectAllPermissions = () => {
   selectedPermissions.value = Object.values(actionsByPage)
     .flat()
     .map((a) => a.value)
-  // Removed: selectedRole.value = null
 }
 
 const clearAllPermissions = () => {
   selectedPermissions.value = []
-  // Removed: selectedRole.value = null
 }
 
 const removePermission = (perm) => {
   selectedPermissions.value = selectedPermissions.value.filter((p) => p !== perm)
-  // --- FIX: Stopped setting selectedRole.value = null ---
 }
 
 const getSelectedCount = (groupActions) =>
@@ -340,18 +338,24 @@ const togglePermission = (val) => {
   } else {
     selectedPermissions.value.push(val)
   }
-  // --- FIX: Stopped setting selectedRole.value = null ---
 }
 
-// --- Submit / Update Function ---
+// --- FIXED SUBMIT FUNCTION ---
 const submit = async () => {
+  // 1. Trigger Form Validation
+  const success = await formRef.value?.validate()
+  if (!success) {
+    $q.notify({ type: 'warning', message: 'Please fix validation errors' })
+    return
+  }
+
   if (!props.selectedUser?.id) return
 
   loading.value = true
   try {
     const uniquePerms = Array.from(new Set(selectedPermissions.value))
 
-    // --- FIX: Use selectedRole.value directly (fallback to custom only if null) ---
+    // Prepare Base Payload
     const payload = {
       username: username.value,
       email: email.value,
@@ -359,26 +363,38 @@ const submit = async () => {
       role: selectedRole.value || 'custom',
     }
 
-    if (password.value && password.value.trim() !== '') {
+    // 2. Handle Password Update
+    // IMPORTANT: Your backend store or Cloud Function must handle the actual auth update.
+    if (password.value && password.value.length > 0) {
       payload.password = password.value
     }
 
     await userStore.updateUser(props.selectedUser.id, payload)
 
+    // 3. Update Local Auth Store if editing self
     if (
       authStore.user?.uid &&
       (props.selectedUser.uid === authStore.user.uid ||
         props.selectedUser.email === authStore.user.email)
     ) {
       authStore.setPermissions(uniquePerms)
+      if (payload.password) {
+        $q.notify({
+          type: 'info',
+          message: 'You updated your own password. You may need to log in again.',
+        })
+      }
     }
 
     $q.notify({ type: 'positive', message: 'User updated successfully', icon: 'check_circle' })
+
+    // 4. Cleanup
+    password.value = '' // Clear sensitive field
     emit('updated')
     localDialog.value = false
   } catch (e) {
     console.error(e)
-    $q.notify({ type: 'negative', message: 'Failed to update user', icon: 'error' })
+    $q.notify({ type: 'negative', message: 'Failed to update user', caption: e.message })
   } finally {
     loading.value = false
   }

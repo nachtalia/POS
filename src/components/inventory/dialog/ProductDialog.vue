@@ -72,7 +72,6 @@
               </q-file>
             </div>
 
-            <!-- Image Preview Section -->
             <div class="col-12" v-if="productImagePreview || productForm.productImage">
               <div class="text-caption text-grey-7 q-mb-xs">Image Preview:</div>
               <div
@@ -107,6 +106,7 @@
 
             <div class="col-12">
               <div class="text-subtitle2 q-mb-sm text-grey-8">Add-ons</div>
+
               <q-select
                 v-model="productForm.allowedAddonCategories"
                 :options="addonCategoryOptions"
@@ -118,16 +118,19 @@
                 stack-label
                 hint="Filters add-on options by selected categories"
                 class="q-mb-md"
+                @update:model-value="triggerAddonFilter"
               />
+
               <div
                 v-if="(productForm.allowedAddonCategories || []).length > 0"
                 class="text-caption text-grey-7 q-mb-xs"
               >
-                Choose add-ons to include for this product based on selected categories.
+                Showing add-ons from: {{ productForm.allowedAddonCategories.join(', ') }}
               </div>
+
               <q-select
                 v-model="productForm.allowedAddons"
-                :options="addonOptions"
+                :options="filteredAddonOptions"
                 label="Select Add-ons"
                 outlined
                 dense
@@ -138,8 +141,15 @@
                 option-label="label"
                 emit-value
                 map-options
+                use-input
+                @filter="filterAddons"
                 :hint="specificAddonsHint"
               >
+                <template v-slot:no-option>
+                  <q-item>
+                    <q-item-section class="text-grey"> No results found </q-item-section>
+                  </q-item>
+                </template>
                 <template v-slot:option="scope">
                   <q-item v-bind="scope.itemProps">
                     <q-item-section>
@@ -208,6 +218,9 @@ export default {
     const productImageFile = ref(null)
     const productImagePreview = ref('')
 
+    // Create a ref for the filtered options
+    const filteredAddonOptions = ref([])
+
     const productForm = reactive({
       productName: '',
       productPrice: 0,
@@ -217,6 +230,15 @@ export default {
       allowedAddons: [],
       allowedAddonCategories: [],
     })
+
+    // Initialize filtered options
+    watch(
+      () => props.addonOptions,
+      (newVal) => {
+        filteredAddonOptions.value = newVal
+      },
+      { immediate: true },
+    )
 
     // Watch for editingProduct changes
     watch(
@@ -248,9 +270,40 @@ export default {
         }
         productImageFile.value = null
         productImagePreview.value = ''
+
+        // Reset the addon options list when opening dialog
+        filteredAddonOptions.value = props.addonOptions
       },
       { immediate: true },
     )
+
+    // Helper to refresh the list if categories change while the dropdown is closed
+    const triggerAddonFilter = () => {
+      // We essentially run a filter with an empty string to re-evaluate the category filter
+      filterAddons('', (fn) => fn())
+    }
+
+    const filterAddons = (val, update) => {
+      update(() => {
+        // Step 1: Filter by Category (if any categories are selected)
+        let available = props.addonOptions
+
+        const selectedCats = productForm.allowedAddonCategories || []
+        if (selectedCats.length > 0) {
+          available = available.filter((opt) => selectedCats.includes(opt.category))
+        }
+
+        // Step 2: Filter by Search Text (Name)
+        if (val === '') {
+          filteredAddonOptions.value = available
+        } else {
+          const needle = val.toLowerCase()
+          filteredAddonOptions.value = available.filter(
+            (v) => v.label.toLowerCase().indexOf(needle) > -1,
+          )
+        }
+      })
+    }
 
     const handleImageSelect = (file) => {
       if (!file) {
@@ -258,7 +311,6 @@ export default {
         return
       }
 
-      // Check if file is an image
       if (!file.type.startsWith('image/')) {
         $q.notify({
           color: 'negative',
@@ -270,7 +322,6 @@ export default {
         return
       }
 
-      // Check file size (limit to 5MB)
       if (file.size > 5 * 1024 * 1024) {
         $q.notify({
           color: 'negative',
@@ -282,7 +333,6 @@ export default {
         return
       }
 
-      // Create preview
       const reader = new FileReader()
       reader.onload = (e) => {
         productImagePreview.value = e.target.result
@@ -329,6 +379,9 @@ export default {
       productImageFile,
       productImagePreview,
       productForm,
+      filteredAddonOptions, // Return this ref
+      filterAddons, // Return this function
+      triggerAddonFilter, // Return this function
       handleImageSelect,
       clearImage,
       handleSave,

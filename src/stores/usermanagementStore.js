@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
-import { db, secondaryAuth } from 'src/services/firebase'
+// 1. ADDED: 'functions' to the import
+import { db, secondaryAuth, functions } from 'src/services/firebase'
 import {
   collection,
   getDocs,
@@ -12,6 +13,8 @@ import {
   where,
   orderBy,
 } from 'firebase/firestore'
+// 2. ADDED: 'httpsCallable'
+import { httpsCallable } from 'firebase/functions'
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth'
 import { logAudit, logEditAndGetDiff } from 'src/services/auditService'
 
@@ -97,22 +100,51 @@ export const useUserManagementStore = defineStore('usermanagementStore', {
       }
     },
 
+    // ----------------------------------------------------------------
+    // UPDATED: updateUser logic to handle Cloud Function
+    // ----------------------------------------------------------------
     async updateUser(id, updates) {
       try {
         const ref = doc(db, 'user', id)
         const safeUpdates = { ...(updates || {}) }
 
+        // 1. Extract the password so we can use it later
+        let newPassword = null
         if ('password' in safeUpdates) {
+          newPassword = safeUpdates.password
+          // Remove from payload so it doesn't get written to Firestore
           delete safeUpdates.password
         }
 
         const payload = { ...safeUpdates, updatedAt: Timestamp.now() }
 
-        // Calculate Diff and Log
+        // Calculate Diff and Log (Firestore Data only)
         await logEditAndGetDiff('user', id, payload, 'userManagement', 'user')
 
+        // 2. Update Firestore Metadata
         await updateDoc(ref, payload)
 
+        // 3. Call Cloud Function if password exists
+        if (newPassword && newPassword.length > 0) {
+          console.log(`Updating password for user ${id}...`)
+          const updatePasswordFn = httpsCallable(functions, 'adminUpdateUserPassword')
+
+          await updatePasswordFn({
+            targetUid: id,
+            newPassword: newPassword,
+          })
+
+          // Optional: Audit log that password was changed (without logging the actual password)
+          await logAudit({
+            module: 'userManagement',
+            action: 'change_password',
+            entityType: 'user',
+            entityId: id,
+            details: { updatedBy: 'admin_action' },
+          })
+        }
+
+        // 4. Update Local State
         const idx = this.users.findIndex((u) => u.id === id)
         if (idx !== -1) {
           this.users[idx] = { ...this.users[idx], ...payload }
@@ -200,7 +232,6 @@ export const useUserManagementStore = defineStore('usermanagementStore', {
       }
     },
 
-    // --- THIS IS THE FUNCTION YOU WERE MISSING ---
     async updateRole(id, updates) {
       this.loading = true
       try {

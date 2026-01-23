@@ -90,8 +90,8 @@ import { useSystemSettingsStore } from 'src/stores/systemSettingsStore'
 import { useAuthStore } from 'src/features/index'
 
 // 2. Firebase Imports
-// ADDED: doc, getDoc
-import { signInWithEmailAndPassword } from 'firebase/auth'
+// ADDED: signOut to validly kill the session if they have no permission
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth'
 import { collection, getDocs, getDoc, doc, query, where, limit } from 'firebase/firestore'
 import { auth, db } from 'src/services/firebase'
 
@@ -141,7 +141,6 @@ onMounted(async () => {
 })
 
 const onLoginSubmit = async () => {
-  // 1. Client-side Validation
   if (!identifier.value || !password.value) {
     $q.notify({ type: 'warning', message: 'Please enter email/username and password' })
     return
@@ -152,7 +151,7 @@ const onLoginSubmit = async () => {
   try {
     let loginEmail = identifier.value
 
-    // 2. Resolve Username to Email (if user typed a username)
+    // 2. Resolve Username to Email
     if (!emailPattern.test(identifier.value)) {
       const q = query(collection(db, 'user'), where('username', '==', identifier.value), limit(1))
       const snap = await getDocs(q)
@@ -171,17 +170,13 @@ const onLoginSubmit = async () => {
     console.log('Firebase Auth successful. UID:', user.uid)
 
     // 4. Fetch User Role/Profile from Firestore
-    // FIX: Try to get document by UID first (Best Practice), then fallback to Email search
     let userData = null
-
-    // Attempt A: Direct lookup by UID (Fastest & Most Reliable)
     const userDocRef = doc(db, 'user', user.uid)
     const userDocSnap = await getDoc(userDocRef)
 
     if (userDocSnap.exists()) {
       userData = userDocSnap.data()
     } else {
-      // Attempt B: Search by Email (Fallback if Doc ID != UID)
       const emailQuery = query(collection(db, 'user'), where('email', '==', user.email), limit(1))
       const emailSnap = await getDocs(emailQuery)
       if (!emailSnap.empty) {
@@ -189,24 +184,35 @@ const onLoginSubmit = async () => {
       }
     }
 
-    let userRole = 'staff' // Default if nothing found
+    let userRole = 'staff'
     let currentUsername = 'User'
     let userPermissions = []
 
     if (userData) {
-      // READ THE ROLE CORRECTLY
       userRole = userData.role || 'staff'
       currentUsername = userData.username || 'User'
 
-      // --- PERMISSIONS LOGIC ---
-      if (userRole === 'superadmin') {
-        userPermissions = ['*'] // Use Wildcard, Router handles the rest
+      if (userRole === 'superadmin' || userRole === 'admin') {
+        userPermissions = ['*'] // Give wildcard
       } else {
         userPermissions = userData.permissions || []
       }
     }
 
-    // 5. Populate Store
+    // --- NEW STEP: Permission Validation ---
+    // Check if user is an Admin OR has at least one permission
+    const isAdmin = ['admin', 'superadmin'].includes(userRole)
+    const hasAnyPermission = userPermissions && userPermissions.length > 0
+
+    if (!isAdmin && !hasAnyPermission) {
+      // 1. Force logout immediately so they aren't "logged in" in the background
+      await signOut(auth)
+      // 2. Throw custom error to stop execution
+      throw { code: 'custom/no-permission' }
+    }
+    // ----------------------------------------
+
+    // 5. Populate Store (Only happens if permission check passed)
     authStore.setUser({
       uid: user.uid,
       email: user.email,
@@ -218,38 +224,45 @@ const onLoginSubmit = async () => {
     // 6. Notify
     $q.notify({
       color: 'positive',
-      message: `Welcome back, ${currentUsername}! (${userRole})`,
+      message: `Welcome back, ${currentUsername}!`,
       icon: 'check',
       position: 'top',
     })
 
     // 7. Redirect
-    // --- Updated Redirect Logic in LoginPage.vue ---
-
     if (['admin', 'superadmin'].includes(userRole)) {
       router.push({ name: 'Dashboard' })
     } else if (userPermissions.includes('ordering:view')) {
       router.push({ name: 'POS' })
     } else if (userPermissions.includes('inventory:view')) {
-      // If they are an inventory clerk, send them straight to Inventory
       router.push({ name: 'Inventory' })
     } else if (userPermissions.includes('transactions:view')) {
       router.push({ name: 'Transactions' })
     } else {
-      // Fallback for users with minimal access
+      // This fallback catches valid users who have weird permissions not listed above
       router.push({ name: 'Dashboard' })
     }
   } catch (error) {
     console.error('Login Error:', error)
 
     let msg = 'Login failed. Please try again.'
+    let notifType = 'negative'
+    let notifIcon = 'report_problem'
+
     if (error.code === 'auth/invalid-credential') msg = 'Invalid email or password.'
     if (error.code === 'custom/username-not-found') msg = 'Username not found.'
 
+    // --- CUSTOM ERROR MESSAGE FOR NO PERMISSION ---
+    if (error.code === 'custom/no-permission') {
+      msg = 'Access Denied: Your account has no assigned permissions.'
+      notifType = 'warning'
+      notifIcon = 'block'
+    }
+
     $q.notify({
-      color: 'negative',
+      color: notifType,
       message: msg,
-      icon: 'report_problem',
+      icon: notifIcon,
     })
   } finally {
     loading.value = false

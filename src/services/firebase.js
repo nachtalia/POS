@@ -2,7 +2,8 @@
 import { initializeApp } from 'firebase/app'
 import { getAnalytics } from 'firebase/analytics'
 import { getFirestore } from 'firebase/firestore'
-import { getAuth } from 'firebase/auth' // 1. Import Auth SDK
+import { getAuth } from 'firebase/auth'
+import { getFunctions } from 'firebase/functions' // 1. IMPORT THIS
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -20,9 +21,13 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig)
 const analytics = getAnalytics(app)
 const db = getFirestore(app)
-const auth = getAuth(app) // 2. Initialize Auth
+const auth = getAuth(app)
+
+// 2. INITIALIZE FUNCTIONS
+const functions = getFunctions(app)
+
 const secondaryApp = initializeApp(firebaseConfig, 'Secondary')
 const secondaryAuth = getAuth(secondaryApp)
 
-// 3. Export auth so other files can use it
-export { app, analytics, db, auth, secondaryAuth }
+// 3. EXPORT FUNCTIONS
+export { app, analytics, db, auth, secondaryAuth, functions }

@@ -243,8 +243,6 @@ const isCheckout = ref(false)
 const isProcessing = ref(false)
 const showTaxDetails = ref(false)
 const paymentMethod = ref('Cash')
-
-// UPDATED: Initialized as null so input is empty
 const cashReceived = ref(null)
 
 const taxRate = ref(0.1)
@@ -270,19 +268,15 @@ const subtotal = computed(() => grossTotal.value - taxAmount.value)
 const finalTotal = computed(() => Math.max(0, grossTotal.value - dbDiscount.value))
 const totalItems = computed(() => props.cart.reduce((t, i) => t + i.quantity, 0))
 
-// UPDATED: Treat null/empty as 0 for calculation
+// Live change calculation for display
 const change = computed(() => (cashReceived.value || 0) - finalTotal.value)
 
 // Disable "Complete" button logic
 const isCheckoutDisabled = computed(() => {
   if (!isCheckout.value) return false
-
-  // Only validate amount if paying by Cash
-  // UPDATED: Check against (value || 0)
   if (paymentMethod.value === 'Cash') {
     return (cashReceived.value || 0) < finalTotal.value
   }
-
   return false
 })
 
@@ -298,8 +292,7 @@ const voidItem = (index) => {
 }
 
 const handleCompleteOrder = async () => {
-  // Logic check just in case
-  // UPDATED: Check against (value || 0)
+  // 1. Validation for Cash
   if (paymentMethod.value === 'Cash' && (cashReceived.value || 0) < finalTotal.value) {
     return $q.notify({ type: 'negative', message: 'Insufficient cash.' })
   }
@@ -307,6 +300,12 @@ const handleCompleteOrder = async () => {
   isProcessing.value = true
 
   try {
+    // 2. Determine Logic for Payment Received & Change
+    const finalPaymentReceived =
+      paymentMethod.value === 'Cash' ? cashReceived.value || 0 : finalTotal.value
+
+    const finalChange = paymentMethod.value === 'Cash' ? change.value : 0
+
     emit('submit-order', {
       subtotal: subtotal.value,
       taxAmount: taxAmount.value,
@@ -314,21 +313,21 @@ const handleCompleteOrder = async () => {
       totalAmount: finalTotal.value,
       itemCount: totalItems.value,
       taxRate: taxRate.value,
-
       paymentMethod: paymentMethod.value,
 
-      // UPDATED: Send 0 if null
-      cashReceived: paymentMethod.value === 'Cash' ? cashReceived.value || 0 : 0,
-      changeAmount: paymentMethod.value === 'Cash' ? change.value : 0,
+      // --- FIXED LOGIC HERE ---
+      // If GCash/Bank: Payment Received = Total Amount, Change = 0
+      // If Cash: Payment Received = Input Value, Change = Calculated Change
+      paymentReceived: finalPaymentReceived,
+      change: finalChange,
+      // ------------------------
 
       referenceNumber: 'N/A',
-
       items: props.cart,
       customer: localCustomer.value,
     })
 
     isCheckout.value = false
-    // UPDATED: Reset to null
     cashReceived.value = null
     paymentMethod.value = 'Cash'
   } catch (e) {
@@ -345,7 +344,6 @@ watch(
   (l) => {
     if (l === 0) {
       isCheckout.value = false
-      // UPDATED: Reset to null
       cashReceived.value = null
     }
   },
