@@ -27,7 +27,6 @@
         :pagination="pagination"
         flat
         bordered
-        :grid="$q.screen.xs"
       >
         <template v-slot:body-cell-role="props">
           <q-td :props="props">
@@ -150,31 +149,20 @@ const search = ref('')
 const expandedRows = ref({})
 
 const columns = [
+  { name: 'avatar', label: '', field: 'avatar', align: 'center', sortable: false },
   { name: 'username', label: 'Username', field: 'username', align: 'left', sortable: true },
-  { name: 'role', label: 'Role', field: 'role', align: 'left', sortable: true, width: '150px' },
-  {
-    name: 'permissions',
-    label: 'Permissions',
-    field: 'permissions',
-    align: 'left',
-    sortable: false,
-  },
+  { name: 'email', label: 'Email', field: 'email', align: 'left', sortable: true },
+  { name: 'role', label: 'Role', field: 'role', align: 'center', sortable: true },
+  { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
+  { name: 'permissions', label: 'Permissions', field: 'permissions', align: 'left' },
   {
     name: 'createdAt',
-    label: 'Created Date',
-    field: 'formattedCreatedAt',
-    align: 'left',
-    sortable: true,
-    width: '220px',
-  },
-  {
-    name: 'actions',
-    label: 'Actions',
-    field: 'actions',
+    label: 'Created At',
+    field: 'createdAt',
     align: 'center',
-    sortable: false,
-    width: '150px',
+    sortable: true,
   },
+  { name: 'actions', label: 'Actions', field: 'actions', align: 'center' },
 ]
 
 // Search Filter

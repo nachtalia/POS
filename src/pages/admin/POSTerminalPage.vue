@@ -4,29 +4,67 @@
 
     <q-page-container>
       <q-page class="row fit q-pa-md q-col-gutter-md" :class="{ 'no-wrap': $q.screen.gt.sm, 'wrap': !$q.screen.gt.sm }">
-      <div class="col-12 col-md-8 column no-wrap" :style="$q.screen.lt.md ? 'height: 600px' : ''">
-        <ProductBrowser
-          :products="products"
-          :loading="loadingProducts"
-          :img-map="imgMap"
-          @select-product="openCustomizer"
-        />
-      </div>
+        <!-- PRODUCT BROWSER (Always visible, full width on mobile) -->
+        <div class="col-12 col-md-8 column no-wrap" :style="$q.screen.lt.md ? 'height: calc(100vh - 150px)' : ''">
+          <ProductBrowser
+            :products="products"
+            :loading="loadingProducts"
+            :img-map="imgMap"
+            @select-product="openCustomizer"
+          />
+        </div>
 
-      <div class="col-12 col-md-4 column no-wrap" :style="$q.screen.lt.md ? 'height: 500px' : ''">
-        <POSCartPanel
-          v-model:customer="customer"
-          :cart="cart"
-          :img-map="imgMap"
-          @update-quantity="updateQuantity"
-          @remove-item="removeItem"
-          @clear-cart="clearCart"
-          @submit-order="submitOrder"
-          @save-draft="saveAsDraft"
-        />
-      </div>
-    </q-page>
+        <!-- CART PANEL (Desktop: Side Panel, Mobile: Hidden/Dialog) -->
+        <div v-if="$q.screen.gt.sm" class="col-12 col-md-4 column no-wrap">
+          <POSCartPanel
+            v-model:customer="customer"
+            :cart="cart"
+            :img-map="imgMap"
+            @update-quantity="updateQuantity"
+            @remove-item="removeItem"
+            @clear-cart="clearCart"
+            @submit-order="submitOrder"
+            @save-draft="saveAsDraft"
+          />
+        </div>
+      </q-page>
     </q-page-container>
+
+    <!-- MOBILE CART DIALOG -->
+    <q-dialog v-model="showMobileCart" position="bottom" maximized>
+      <q-card class="column full-height">
+        <q-card-section class="row items-center justify-between bg-primary text-white q-py-sm">
+          <div class="text-h6">Current Order</div>
+          <q-btn flat round dense icon="close" v-close-popup />
+        </q-card-section>
+
+        <q-card-section class="col q-pa-none">
+          <POSCartPanel
+            v-model:customer="customer"
+            :cart="cart"
+            :img-map="imgMap"
+            @update-quantity="updateQuantity"
+            @remove-item="removeItem"
+            @clear-cart="clearCart"
+            @submit-order="submitOrder"
+            @save-draft="saveAsDraft"
+            class="full-height"
+          />
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+
+    <!-- MOBILE CART FAB (Floating Action Button) -->
+    <q-page-sticky position="bottom-right" :offset="[18, 18]" v-if="$q.screen.lt.md">
+      <q-btn
+        fab
+        icon="shopping_cart"
+        color="primary"
+        @click="showMobileCart = true"
+      >
+        <q-badge color="red" floating v-if="cart.length > 0">{{ cartTotalItems }}</q-badge>
+      </q-btn>
+    </q-page-sticky>
 
     <ProductCustomizer
       v-model="showCustomizer"
@@ -38,7 +76,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
 import { db } from 'src/services/firebase'
@@ -69,8 +107,13 @@ const customer = ref({ name: '', email: '', phone: '' })
 let unsubscribeProducts = null
 
 const showCustomizer = ref(false)
+const showMobileCart = ref(false)
 const activeProduct = ref(null)
 // Removed showReceipt and receiptOrder state variables
+
+const cartTotalItems = computed(() => {
+  return cart.value.reduce((total, item) => total + item.quantity, 0)
+})
 
 const PLACEHOLDER_IMG =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='

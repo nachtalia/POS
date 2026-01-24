@@ -1,17 +1,30 @@
 <template>
   <q-card class="text-white glass-card metric-card" :class="gradientClass">
-    <q-card-section>
+    <q-card-section :class="{ 'q-pa-sm': $q.screen.xs }">
       <div class="row items-start justify-between">
         <div>
-          <div :class="textColorClass">{{ title }}</div>
-          <div class="text-h5 text-weight-bold q-mt-sm">{{ value }}</div>
+          <div :class="[textColorClass, { 'text-caption': $q.screen.xs }]">{{ title }}</div>
+          <div
+            class="text-weight-bold q-mt-sm"
+            :class="$q.screen.xs ? 'text-subtitle1' : 'text-h5'"
+          >
+            {{ value }}
+          </div>
         </div>
-        <q-icon :name="icon" size="20px" class="opacity-50" />
+        <q-icon
+          :name="icon"
+          :size="$q.screen.xs ? '16px' : '20px'"
+          class="opacity-50"
+        />
       </div>
 
       <div
         v-if="subLabel || $slots['sub-content']"
-        :class="`text-caption q-mt-md ${textColorClass}`"
+        :class="[
+          `text-caption ${textColorClass}`,
+          $q.screen.xs ? 'q-mt-xs' : 'q-mt-md',
+          { 'text-xs': $q.screen.xs },
+        ]"
       >
         <slot name="sub-content">
           {{ subLabel }}
@@ -23,6 +36,9 @@
 
 <script setup>
 import { computed, useSlots } from 'vue'
+import { useQuasar } from 'quasar'
+
+const $q = useQuasar()
 
 const props = defineProps({
   title: String,

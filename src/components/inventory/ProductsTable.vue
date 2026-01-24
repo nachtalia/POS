@@ -6,7 +6,6 @@
     :loading="loading"
     flat
     bordered
-    :grid="$q.screen.xs"
   >
     <template v-slot:no-data="{ filter }">
       <div class="full-width row flex-center q-gutter-sm q-pa-lg text-grey-8">

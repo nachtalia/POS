@@ -1,12 +1,12 @@
 <template>
   <q-card class="glass-card chart-card">
     <q-card-section>
-      <div class="row items-center justify-between">
-        <div>
+      <div class="row items-center justify-between" :class="{ 'column q-gutter-y-sm': $q.screen.xs }">
+        <div :class="{ 'text-center': $q.screen.xs }">
           <div class="text-h6 text-weight-bold">Sales Performance</div>
           <div class="text-caption text-grey-7">{{ selectedPeriod.label }} performance metrics</div>
         </div>
-        <div class="row items-center q-gutter-sm">
+        <div class="row items-center q-gutter-sm" :class="{ 'justify-center full-width': $q.screen.xs }">
           <q-btn-group unelevated class="period-selector">
             <q-btn
               v-for="period in timePeriods"
@@ -37,7 +37,7 @@
         </div>
       </div>
 
-      <div style="height: 300px" class="q-px-sm relative-position">
+      <div class="q-px-sm relative-position overflow-auto" style="height: 300px">
         <div v-if="chartData.length === 0" class="flex flex-center full-height text-grey-5">
           <div class="text-center">
             <q-icon name="bar_chart" size="40px" class="q-mb-sm" />
@@ -45,7 +45,7 @@
           </div>
         </div>
 
-        <div v-else class="row items-end full-height">
+        <div v-else class="row items-end full-height" style="min-width: 500px">
           <div v-for="(data, index) in chartData" :key="index" class="col text-center full-height">
             <div class="flex column items-center justify-end full-height">
               <div

@@ -30,8 +30,6 @@
         :rows-per-page-options="[5, 10, 15]"
         :pagination="{ rowsPerPage: 10 }"
         class="sticky-header"
-        :grid="$q.screen.xs"
-        :card-container-class="$q.screen.xs ? 'q-pa-sm q-gutter-sm' : ''"
       >
         <!-- Mobile Grid View -->
         <template v-slot:item="props">
@@ -318,8 +316,8 @@ const roles = computed(() => userStore.roles)
 
 const columns = [
   { name: 'label', label: 'Role Name', field: 'label', align: 'left', sortable: true },
-  { name: 'value', label: 'ID', field: 'value', align: 'left', sortable: true },
-  { name: 'permissions', label: 'Access Level', field: 'permissions', align: 'left' },
+  { name: 'value', label: 'Role ID', field: 'value', align: 'left', sortable: true },
+  { name: 'permissions', label: 'Permissions', field: 'permissions', align: 'left' },
   { name: 'actions', label: 'Actions', field: 'actions', align: 'right' },
 ]
 
