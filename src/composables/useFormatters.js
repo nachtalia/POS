@@ -10,6 +10,20 @@ export function useFormatters() {
     }).format(amount)
   }
 
+  const formatDate = (dateInput) => {
+    if (!dateInput) return ''
+    const date =
+      dateInput && typeof dateInput.toDate === 'function' ? dateInput.toDate() : new Date(dateInput)
+    if (isNaN(date.getTime())) return ''
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(date)
+  }
+
   const formatTime = (dateInput) => {
     if (!dateInput) return ''
     const date =
@@ -17,5 +31,5 @@ export function useFormatters() {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
 
-  return { formatCurrency, formatTime }
+  return { formatCurrency, formatDate, formatTime }
 }

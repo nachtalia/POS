@@ -1,6 +1,6 @@
 <template>
-  <q-page padding class="bg-app">
-    <div class="row q-col-gutter-md">
+  <q-page :padding="$q.screen.gt.xs" class="bg-app" :class="{ 'q-pa-sm': $q.screen.xs }">
+    <div class="row" :class="$q.screen.gt.xs ? 'q-col-gutter-md' : 'q-col-gutter-sm'">
       <div class="col-12">
         <DashboardHeader
           @refresh="refreshData"
@@ -10,54 +10,64 @@
         />
       </div>
 
-      <div class="col-12 col-md-3">
-        <MetricCard
-          title="Today's Sales"
-          :value="formatCurrency(todaySales)"
-          icon="payments"
-          gradient-class="bg-gradient-primary"
-          text-color="blue-1"
+      <div class="col-12">
+        <div
+          class="row"
+          :class="{
+            'no-wrap q-col-gutter-xs': $q.screen.xs,
+            'q-col-gutter-md': $q.screen.gt.xs,
+          }"
         >
-          <template #sub-content>
-            <div class="row items-center q-gutter-x-xs">
-              <q-icon :name="salesGrowth >= 0 ? 'trending_up' : 'trending_down'" />
-              <span>{{ Math.abs(salesGrowth) }}% vs yesterday</span>
-            </div>
-          </template>
-        </MetricCard>
-      </div>
+          <div class="col-3 col-sm-6 col-md-3">
+            <MetricCard
+              title="Sales"
+              :value="formatCurrency(todaySales)"
+              :icon="$q.screen.xs ? '' : 'payments'"
+              gradient-class="bg-gradient-primary"
+              text-color="blue-1"
+            >
+              <template #sub-content v-if="!$q.screen.xs">
+                <div class="row items-center q-gutter-x-xs">
+                  <q-icon :name="salesGrowth >= 0 ? 'trending_up' : 'trending_down'" />
+                  <span>{{ Math.abs(salesGrowth) }}% vs yesterday</span>
+                </div>
+              </template>
+            </MetricCard>
+          </div>
 
-      <div class="col-12 col-md-3">
-        <MetricCard
-          title="Orders Today"
-          :value="todayOrders"
-          icon="shopping_bag"
-          gradient-class="bg-gradient-success"
-          text-color="green-1"
-          :sub-label="`Avg. ${formatCurrency(averageOrderValue)} / order`"
-        />
-      </div>
+          <div class="col-3 col-sm-6 col-md-3">
+            <MetricCard
+              title="Orders"
+              :value="todayOrders"
+              :icon="$q.screen.xs ? '' : 'shopping_bag'"
+              gradient-class="bg-gradient-success"
+              text-color="green-1"
+              :sub-label="$q.screen.xs ? '' : `Avg. ${formatCurrency(averageOrderValue)} / order`"
+            />
+          </div>
 
-      <div class="col-12 col-md-3">
-        <MetricCard
-          title="Low Stock Items"
-          :value="lowStockItems"
-          icon="inventory_2"
-          gradient-class="bg-gradient-warning"
-          text-color="orange-1"
-          :sub-label="`${criticalStockItems} items critical`"
-        />
-      </div>
+          <div class="col-3 col-sm-6 col-md-3">
+            <MetricCard
+              title="Stock"
+              :value="lowStockItems"
+              :icon="$q.screen.xs ? '' : 'inventory_2'"
+              gradient-class="bg-gradient-warning"
+              text-color="orange-1"
+              :sub-label="$q.screen.xs ? '' : `${criticalStockItems} items critical`"
+            />
+          </div>
 
-      <div class="col-12 col-md-3">
-        <MetricCard
-          title="Active Tables"
-          :value="activeTables"
-          icon="table_restaurant"
-          gradient-class="bg-gradient-info"
-          text-color="cyan-1"
-          :sub-label="`${occupiedTables} of ${totalTables} occupied`"
-        />
+          <div class="col-3 col-sm-6 col-md-3">
+            <MetricCard
+              title="Tables"
+              :value="activeTables"
+              :icon="$q.screen.xs ? '' : 'table_restaurant'"
+              gradient-class="bg-gradient-info"
+              text-color="cyan-1"
+              :sub-label="$q.screen.xs ? '' : `${occupiedTables} of ${totalTables} occupied`"
+            />
+          </div>
+        </div>
       </div>
 
       <div class="col-12 col-md-8">

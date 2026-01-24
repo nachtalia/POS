@@ -63,45 +63,117 @@
       />
     </div>
     <div class="col-12" v-if="selectedInventoryTab === 'products'">
-      <q-btn
-        color="primary"
-        icon="category"
-        label="Add Category"
-        class="q-mr-sm"
-        @click="$emit('add-category')"
-        v-if="canAddCategory"
-      />
-      <q-btn
-        color="primary"
-        icon="add"
-        label="Add Product"
-        @click="$emit('add-product')"
-        v-if="canAddProduct"
-      />
-      <q-btn
-        color="secondary"
-        icon="download"
-        label="Export"
-        class="q-ml-sm"
-        @click="$emit('export')"
-      />
+      <!-- Mobile Dropdown -->
+      <div v-if="$q.screen.xs">
+        <q-btn-dropdown
+          color="primary"
+          label="Manage Products"
+          class="full-width"
+          icon="settings"
+          no-caps
+        >
+          <q-list>
+            <q-item clickable v-close-popup @click="$emit('add-category')" v-if="canAddCategory">
+              <q-item-section avatar>
+                <q-icon name="category" color="primary" />
+              </q-item-section>
+              <q-item-section>Add Category</q-item-section>
+            </q-item>
+
+            <q-item clickable v-close-popup @click="$emit('add-product')" v-if="canAddProduct">
+              <q-item-section avatar>
+                <q-icon name="add" color="primary" />
+              </q-item-section>
+              <q-item-section>Add Product</q-item-section>
+            </q-item>
+
+            <q-separator />
+
+            <q-item clickable v-close-popup @click="$emit('export')">
+              <q-item-section avatar>
+                <q-icon name="download" color="secondary" />
+              </q-item-section>
+              <q-item-section>Export Data</q-item-section>
+            </q-item>
+          </q-list>
+        </q-btn-dropdown>
+      </div>
+
+      <!-- Desktop Buttons -->
+      <div v-else class="row q-gutter-sm">
+        <q-btn
+          color="primary"
+          icon="category"
+          label="Add Category"
+          @click="$emit('add-category')"
+          v-if="canAddCategory"
+        />
+        <q-btn
+          color="primary"
+          icon="add"
+          label="Add Product"
+          @click="$emit('add-product')"
+          v-if="canAddProduct"
+        />
+        <q-btn
+          color="secondary"
+          icon="download"
+          label="Export"
+          @click="$emit('export')"
+        />
+      </div>
     </div>
+
     <div class="col-12" v-if="selectedInventoryTab === 'addons'">
-      <q-btn
-        color="primary"
-        icon="add"
-        label="Add Add-on"
-        @click="$emit('add-addon')"
-        v-if="canAddAddon"
-      />
-      <q-btn
-        color="primary"
-        icon="category"
-        label="Add Add-on Category"
-        class="q-ml-sm"
-        @click="$emit('add-addon-category')"
-        v-if="canAddAddon"
-      />
+      <!-- Mobile Dropdown -->
+      <div v-if="$q.screen.xs">
+        <q-btn-dropdown
+          color="primary"
+          label="Manage Add-ons"
+          class="full-width"
+          icon="settings"
+          no-caps
+        >
+          <q-list>
+            <q-item clickable v-close-popup @click="$emit('add-addon')" v-if="canAddAddon">
+              <q-item-section avatar>
+                <q-icon name="add" color="primary" />
+              </q-item-section>
+              <q-item-section>Add Add-on</q-item-section>
+            </q-item>
+
+            <q-item
+              clickable
+              v-close-popup
+              @click="$emit('add-addon-category')"
+              v-if="canAddAddon"
+            >
+              <q-item-section avatar>
+                <q-icon name="category" color="primary" />
+              </q-item-section>
+              <q-item-section>Add Category</q-item-section>
+            </q-item>
+          </q-list>
+        </q-btn-dropdown>
+      </div>
+
+      <!-- Desktop Buttons -->
+      <div v-else class="row q-gutter-sm">
+        <q-btn
+          color="primary"
+          icon="add"
+          label="Add Add-on"
+          @click="$emit('add-addon')"
+          v-if="canAddAddon"
+        />
+        <q-btn
+          color="primary"
+          icon="category"
+          label="Add Add-on Category"
+          @click="$emit('add-addon-category')"
+          v-if="canAddAddon"
+        />
+      </div>
     </div>
   </div>
 </template>

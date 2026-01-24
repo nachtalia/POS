@@ -1,6 +1,9 @@
 <template>
   <q-card class="glass-card header-card">
-    <q-card-section class="row items-center justify-between dashboard-hero">
+    <q-card-section
+      class="row items-center justify-between dashboard-hero"
+      :class="{ 'column q-gutter-y-sm text-center': $q.screen.xs }"
+    >
       <div>
         <div class="text-h5 text-weight-bold gradient-text">Coffee Shop Dashboard</div>
         <div class="text-subtitle2 text-grey-8">
@@ -8,7 +11,7 @@
         </div>
       </div>
 
-      <div class="row q-gutter-sm">
+      <div class="row q-gutter-sm" :class="{ 'justify-center full-width': $q.screen.xs }">
         <q-btn flat color="primary" icon="refresh" @click="$emit('refresh')" round dense>
           <q-tooltip>Refresh Data</q-tooltip>
         </q-btn>

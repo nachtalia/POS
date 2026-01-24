@@ -14,7 +14,7 @@
       </q-toolbar-title>
 
       <div class="row items-center q-gutter-x-md">
-        <div class="row items-center bg-grey-2 rounded-capsule q-px-md q-py-xs">
+        <div class="row items-center bg-grey-2 rounded-capsule q-px-md q-py-xs gt-xs">
           <q-icon name="schedule" color="primary" class="q-mr-sm" />
           <div class="column">
             <span class="text-caption text-grey-6" style="font-size: 10px">Session Time</span>
@@ -26,7 +26,7 @@
           <q-avatar size="28px" color="primary" text-color="white" class="q-mr-sm font-weight-bold">
             {{ userInitial }}
           </q-avatar>
-          <div class="column">
+          <div class="column gt-xs">
             <span class="text-caption text-grey-6" style="font-size: 10px">{{ userRole }}</span>
             <span class="text-weight-bold text-caption">{{ userName }}</span>
           </div>

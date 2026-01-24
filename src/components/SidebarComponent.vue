@@ -180,9 +180,11 @@ const onLogout = async () => {
 </script>
 
 <style lang="scss">
+@use "sass:color";
+
 .q-item--active {
   color: $primary;
-  background: lighten($primary, 48%);
+  background: color.adjust($primary, $lightness: 48%);
   font-weight: 600;
   border-radius: 8px;
   position: relative;

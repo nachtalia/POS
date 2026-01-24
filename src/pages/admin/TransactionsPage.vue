@@ -109,24 +109,24 @@
                 <div class="text-weight-bold text-primary font-mono">
                   {{ props.value }}
                 </div>
-                <q-tooltip class="bg-grey-9">System ID: {{ props.row.id }}</q-tooltip>
+                <div class="text-caption text-grey-5" style="font-size: 0.7rem">
+                  {{ props.row.id.substring(0, 8) }}...
+                </div>
               </q-td>
             </template>
 
-            <template v-slot:body-cell-cashier="props">
+            <template v-slot:body-cell-date="props">
               <q-td :props="props">
-                <div class="row items-center no-wrap">
-                  <q-avatar size="24px" color="grey-3" text-color="grey-8" class="q-mr-sm">
-                    {{ props.value.charAt(0).toUpperCase() }}
-                  </q-avatar>
-                  <div class="text-grey-9">{{ props.value }}</div>
-                </div>
+                <div class="text-weight-medium text-grey-9">{{ formatDate(props.value) }}</div>
               </q-td>
             </template>
 
             <template v-slot:body-cell-customerName="props">
               <q-td :props="props">
                 <div class="text-weight-medium text-blue-grey-9">{{ props.value }}</div>
+                <div class="text-caption text-grey-6" v-if="props.row.customer?.phone">
+                  {{ props.row.customer.phone }}
+                </div>
               </q-td>
             </template>
 
@@ -150,6 +150,68 @@
               </q-td>
             </template>
 
+            <template v-slot:body-cell-items="props">
+              <q-td :props="props" class="text-center">
+                <q-badge color="grey-2" text-color="grey-9" rounded class="q-px-sm shadow-sm">
+                  {{ props.value }} Items
+                </q-badge>
+              </q-td>
+            </template>
+
+            <template v-slot:body-cell-type="props">
+              <q-td :props="props" class="text-center">
+                <q-chip
+                  dense
+                  square
+                  outline
+                  color="primary"
+                  size="sm"
+                  class="text-weight-bold"
+                  :label="props.value"
+                />
+              </q-td>
+            </template>
+
+            <template v-slot:body-cell-paymentMethod="props">
+              <q-td :props="props" class="text-center">
+                <div class="row items-center justify-center no-wrap text-grey-8">
+                  <q-icon :name="getPaymentIcon(props.value)" size="xs" class="q-mr-xs" />
+                  <span class="text-caption text-weight-medium">{{ props.value }}</span>
+                </div>
+              </q-td>
+            </template>
+
+            <template v-slot:body-cell-actions="props">
+              <q-td :props="props" class="text-right">
+                <div class="row justify-end q-gutter-x-sm no-wrap">
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    color="grey-7"
+                    icon="visibility"
+                    size="sm"
+                    class="bg-grey-2"
+                    @click="viewOrder(props.row)"
+                  >
+                    <q-tooltip>View Details</q-tooltip>
+                  </q-btn>
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    color="primary"
+                    icon="print"
+                    size="sm"
+                    class="bg-blue-1"
+                    @click="printOrder(props.row)"
+                  >
+                    <q-tooltip>Print Receipt</q-tooltip>
+                  </q-btn>
+                </div>
+              </q-td>
+            </template>
+
             <template v-slot:no-data>
               <div class="full-width row flex-center q-pa-xl text-grey-5">
                 <div class="column items-center">
@@ -169,8 +231,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useOrderStore } from '../../stores/orderStore'
+import { useFormatters } from 'src/composables/useFormatters'
 
 const orderStore = useOrderStore()
+const { formatDate, formatCurrency } = useFormatters()
 
 const searchQuery = ref('')
 const fromDate = ref('')
@@ -213,74 +277,98 @@ const computeTotal = (row) => {
   return subtotal + tax - discount
 }
 
+const getPaymentIcon = (method) => {
+  if (!method) return 'payments'
+  const m = method.toLowerCase()
+  if (m.includes('cash')) return 'payments'
+  if (m.includes('card') || m.includes('visa') || m.includes('master')) return 'credit_card'
+  if (m.includes('gcash') || m.includes('wallet')) return 'account_balance_wallet'
+  if (m.includes('bank')) return 'account_balance'
+  return 'receipt'
+}
+
+const viewOrder = (row) => {
+  console.log('View Order', row)
+  // TODO: Implement View Dialog
+}
+
+const printOrder = (row) => {
+  console.log('Print Order', row)
+  // TODO: Implement Print Logic
+}
+
 // --- UPDATED COLUMNS ---
 const columns = [
-  // 1. Order Number (Readable ID)
   {
     name: 'orderNumber',
+    required: true,
     label: 'Order ID',
-    // Logic: Look for orderNumber, fallback to ID, fallback to empty
-    field: (row) => row.orderNumber || row.id || '-',
     align: 'left',
-    sortable: true,
-    style: 'width: 140px',
-  },
-
-  // 2. Processed By (User Name)
-  {
-    name: 'cashier',
-    label: 'Processed By',
-    // Logic: Look for various common fields where user name might be stored
-    field: (row) => {
-      if (row.userName) return row.userName
-      if (row.cashierName) return row.cashierName
-      if (row.user && row.user.name) return row.user.name
-      return 'Unknown'
-    },
-    align: 'left',
+    field: (row) => row.orderNumber || row.id?.substring(0, 8).toUpperCase() || 'N/A',
     sortable: true,
   },
-
-  // 3. Customer Name
   {
     name: 'customerName',
-    label: 'Customer',
-    field: (row) => {
-      if (row.customerName) return row.customerName
-      if (row.customer && row.customer.name) return row.customer.name
-      return 'Walk-in'
-    },
     align: 'left',
+    label: 'Customer Name',
+    field: (row) => row.customerName || 'Walk-in Customer',
     sortable: true,
   },
-
   {
     name: 'date',
-    label: 'Date & Time',
-    field: (row) => row.createdAt || row.date,
     align: 'left',
+    label: 'Date',
+    field: (row) => row.createdAt || row.date,
     sortable: true,
     format: (val) => {
-      const d = normalizeDate(val)
-      if (!d) return '-'
-      return d.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
+      try {
+        return formatDate(val)
+      } catch {
+        return val
+      }
     },
   },
-  { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
+  {
+    name: 'status',
+    align: 'center',
+    label: 'Status',
+    field: 'status',
+    sortable: true,
+  },
   {
     name: 'total',
-    label: 'Total',
-    field: (row) => computeTotal(row),
     align: 'right',
+    label: 'Total Amount',
+    field: (row) => computeTotal(row),
     sortable: true,
-    format: (val) =>
-      `₱${Number(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    format: (val) => formatCurrency(val),
+  },
+  {
+    name: 'items',
+    align: 'center',
+    label: 'Items',
+    field: (row) => row.itemCount || (row.items ? row.items.length : 0),
+    sortable: true,
+  },
+  {
+    name: 'type',
+    align: 'center',
+    label: 'Type',
+    field: (row) => row.orderType || 'Walk-in',
+    sortable: true,
+  },
+  {
+    name: 'paymentMethod',
+    align: 'center',
+    label: 'Payment',
+    field: (row) => row.paymentMethod || 'Cash',
+    sortable: true,
+  },
+  {
+    name: 'actions',
+    align: 'right',
+    label: 'Actions',
+    field: 'actions',
   },
 ]
 

@@ -201,22 +201,64 @@ onUnmounted(() => {
 const columns = [
   {
     name: 'id',
-    label: 'Order #',
-    field: (row) => row.orderNumber || row.id,
+    label: 'Order ID',
+    field: 'id',
     align: 'left',
     sortable: true,
   },
   {
     name: 'customerName',
-    label: 'Customer',
-    field: (row) => row.customerName,
+    label: 'Customer Name',
+    field: 'customerName',
     align: 'left',
     sortable: true,
   },
-  { name: 'date', label: 'Date', field: 'createdAt', align: 'left', sortable: true },
-  { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
-  { name: 'total', label: 'Total', field: 'total', align: 'right', sortable: true },
-  { name: 'actions', label: '', field: 'actions', align: 'center' },
+  {
+    name: 'date',
+    label: 'Date',
+    field: 'createdAt',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'status',
+    label: 'Status',
+    field: 'status',
+    align: 'center',
+    sortable: true,
+  },
+  {
+    name: 'totalAmount',
+    label: 'Total Amount',
+    field: 'totalAmount',
+    align: 'right',
+    sortable: true,
+    format: (val) => `₱${Number(val).toFixed(2)}`,
+  },
+  {
+    name: 'items',
+    label: 'Items',
+    field: 'items',
+    align: 'center',
+  },
+  {
+    name: 'orderType',
+    label: 'Type',
+    field: 'orderType',
+    align: 'center',
+  },
+  {
+    name: 'paymentMethod',
+    label: 'Payment',
+    field: 'paymentMethod',
+    align: 'center',
+  },
+  {
+    name: 'actions',
+    label: 'Actions',
+    field: 'actions',
+    align: 'center',
+  },
 ]
 
 // --- Filtering Logic ---

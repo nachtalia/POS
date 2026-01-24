@@ -1,11 +1,11 @@
 <template>
   <q-card class="column full-height overflow-hidden" style="min-height: 600px">
-    <q-card-section class="bg-primary text-white row items-center justify-between q-py-sm">
+    <q-card-section class="bg-primary text-white row items-center justify-between q-py-sm shrink">
       <div class="text-h6">Role Management</div>
       <q-btn flat round dense icon="close" v-close-popup />
     </q-card-section>
 
-    <q-card-section class="col q-pa-md scroll">
+    <q-card-section class="col scroll q-pa-md">
       <div class="row justify-between items-center q-mb-md q-col-gutter-y-sm">
         <div class="col-12 col-sm-auto">
           <div class="text-subtitle1 text-grey-8">Configure access levels</div>
@@ -32,10 +32,51 @@
         :rows-per-page-options="[10, 20, 0]"
       >
         <template v-slot:body-cell-permissions="props">
-          <q-td :props="props">
-            <q-badge color="blue-grey" outline>
-              {{ props.row.permissions?.length || 0 }} Permissions
-            </q-badge>
+          <q-td :props="props" style="white-space: normal; min-width: 300px">
+            <div v-if="props.row.permissions && props.row.permissions.length > 0">
+              <div v-if="!isExpanded(props.row.id)" class="row q-gutter-xs">
+                <q-badge
+                  v-for="perm in props.row.permissions.slice(0, 3)"
+                  :key="perm"
+                  color="grey-3"
+                  text-color="grey-9"
+                  class="q-pa-xs border-grey"
+                >
+                  {{ perm }}
+                </q-badge>
+
+                <q-badge
+                  v-if="props.row.permissions.length > 3"
+                  color="primary"
+                  class="cursor-pointer q-pa-xs"
+                  @click="toggleExpand(props.row.id)"
+                >
+                  +{{ props.row.permissions.length - 3 }} more
+                </q-badge>
+              </div>
+
+              <div v-else class="row q-gutter-xs">
+                <q-badge
+                  v-for="perm in props.row.permissions"
+                  :key="perm"
+                  color="grey-3"
+                  text-color="grey-9"
+                  class="q-pa-xs border-grey"
+                >
+                  {{ perm }}
+                </q-badge>
+
+                <q-badge
+                  color="primary"
+                  outline
+                  class="cursor-pointer q-pa-xs"
+                  @click="toggleExpand(props.row.id)"
+                >
+                  Show less
+                </q-badge>
+              </div>
+            </div>
+            <div v-else class="text-grey-5 text-caption">No permissions assigned</div>
           </q-td>
         </template>
 
@@ -60,7 +101,7 @@
 
         <template v-slot:item="props">
           <div class="q-pa-xs col-xs-12 col-sm-6 col-md-4">
-            <q-card flat bordered class="q-mb-sm shadow-1">
+            <q-card flat bordered class="q-mb-sm shadow-1 full-height">
               <q-card-section class="row justify-between items-center bg-grey-1 q-py-sm">
                 <div class="text-subtitle1 text-weight-bold">{{ props.row.label }}</div>
                 <q-chip
@@ -77,13 +118,50 @@
               <q-separator />
 
               <q-card-section class="q-py-md">
-                <div class="row items-center no-wrap">
-                  <q-icon name="vpn_key" color="grey-7" class="q-mr-sm" size="xs" />
-                  <div class="text-body2 text-grey-8">
-                    <span class="text-weight-bold">{{ props.row.permissions?.length || 0 }}</span>
-                    permissions assigned
+                <div class="text-caption text-grey-7 q-mb-xs">Permissions:</div>
+
+                <div v-if="props.row.permissions && props.row.permissions.length > 0">
+                  <div v-if="!isExpanded(props.row.id)" class="row q-gutter-xs">
+                    <q-badge
+                      v-for="perm in props.row.permissions.slice(0, 3)"
+                      :key="perm"
+                      color="grey-3"
+                      text-color="grey-9"
+                      class="border-grey"
+                    >
+                      {{ perm }}
+                    </q-badge>
+                    <q-badge
+                      v-if="props.row.permissions.length > 3"
+                      color="primary"
+                      class="cursor-pointer"
+                      @click="toggleExpand(props.row.id)"
+                    >
+                      +{{ props.row.permissions.length - 3 }} more
+                    </q-badge>
+                  </div>
+
+                  <div v-else class="row q-gutter-xs">
+                    <q-badge
+                      v-for="perm in props.row.permissions"
+                      :key="perm"
+                      color="grey-3"
+                      text-color="grey-9"
+                      class="border-grey"
+                    >
+                      {{ perm }}
+                    </q-badge>
+                    <q-badge
+                      color="primary"
+                      outline
+                      class="cursor-pointer"
+                      @click="toggleExpand(props.row.id)"
+                    >
+                      Show less
+                    </q-badge>
                   </div>
                 </div>
+                <div v-else class="text-grey-5 text-italic">None</div>
               </q-card-section>
 
               <q-separator />
@@ -197,7 +275,6 @@
             <div class="text-subtitle2 text-weight-medium text-blue-grey-9 q-mb-xs">
               Permission Configuration
             </div>
-
             <div class="row q-col-gutter-xs q-mb-sm">
               <q-btn
                 outline
@@ -224,10 +301,23 @@
                 expand-separator
                 header-class="bg-grey-1"
                 :label="name"
+                dense
               >
-                <q-item v-for="action in group" :key="action.value" dense tag="label" v-ripple>
+                <q-item
+                  v-for="action in group"
+                  :key="action.value"
+                  dense
+                  tag="label"
+                  v-ripple
+                  class="q-py-none"
+                >
                   <q-item-section avatar>
-                    <q-checkbox v-model="form.permissions" :val="action.value" color="primary" />
+                    <q-checkbox
+                      v-model="form.permissions"
+                      :val="action.value"
+                      color="primary"
+                      size="sm"
+                    />
                   </q-item-section>
                   <q-item-section>
                     <q-item-label class="text-weight-medium">{{ action.label }}</q-item-label>
@@ -268,6 +358,8 @@ const dialogVisible = ref(false)
 const saving = ref(false)
 const isEditing = ref(false)
 const editingId = ref(null)
+// Added for table expand/collapse logic
+const expandedRows = ref({})
 
 const form = ref({
   label: '',
@@ -280,8 +372,8 @@ const roles = computed(() => userStore.roles)
 
 const columns = [
   { name: 'label', label: 'Role Name', field: 'label', align: 'left', sortable: true },
-  { name: 'value', label: 'ID', field: 'value', align: 'left', sortable: true },
-  { name: 'permissions', label: 'Access Level', field: 'permissions', align: 'left' },
+  { name: 'value', label: 'Role ID', field: 'value', align: 'left', sortable: true },
+  { name: 'permissions', label: 'Permissions', field: 'permissions', align: 'left' },
   { name: 'actions', label: 'Actions', field: 'actions', align: 'right' },
 ]
 
@@ -317,6 +409,12 @@ const actionsByPage = {
 onMounted(() => {
   userStore.fetchRoles()
 })
+
+// Toggle Logic for Table
+const isExpanded = (id) => !!expandedRows.value[id]
+const toggleExpand = (id) => {
+  expandedRows.value[id] = !expandedRows.value[id]
+}
 
 const autoFillValue = (val) => {
   if (!isEditing.value && val) {
@@ -408,7 +506,44 @@ const confirmDelete = (role) => {
 </script>
 
 <style scoped>
-.q-table thead th {
-  font-weight: 600;
+/* Mobile optimizations */
+@media (max-width: 599px) {
+  .q-card__section--vert {
+    padding: 12px;
+  }
+
+  .q-btn {
+    min-height: 36px;
+  }
+
+  .q-checkbox__inner {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+.border-grey {
+  border: 1px solid #e0e0e0;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+/* Responsive typography */
+.text-h6 {
+  font-size: clamp(1.1rem, 2.5vw, 1.25rem);
+}
+
+.text-subtitle1 {
+  font-size: clamp(0.9rem, 2vw, 1rem);
+}
+
+.text-subtitle2 {
+  font-size: clamp(0.85rem, 1.8vw, 0.9rem);
+}
+
+.text-caption {
+  font-size: clamp(0.75rem, 1.5vw, 0.8rem);
 }
 </style>

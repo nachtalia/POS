@@ -42,15 +42,15 @@
         <q-spinner-dots size="50px" color="primary" />
       </q-inner-loading>
 
-      <div class="row q-col-gutter-md q-pb-md">
+      <div class="row q-col-gutter-sm q-pb-md">
         <div
           v-for="product in filteredProducts"
           :key="product.id"
-          class="col-12 col-sm-6 col-lg-4 col-xl-3"
+          class="col-6 col-sm-4 col-md-4 col-lg-3"
         >
           <div class="product-card-wrapper fit transition-generic">
             <q-card class="cursor-pointer fit column" @click="$emit('select-product', product)">
-              <q-img :src="imgMap[product.id] || PLACEHOLDER_IMG" style="height: 140px" fit="cover">
+              <q-img :src="imgMap[product.id] || PLACEHOLDER_IMG" :style="$q.screen.lt.md ? 'height: 100px' : 'height: 140px'" fit="cover">
                 <template v-slot:error
                   ><div class="absolute-full flex flex-center bg-grey-3 text-grey">
                     No Img

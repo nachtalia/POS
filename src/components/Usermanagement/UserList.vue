@@ -126,8 +126,8 @@
 
         <template v-slot:item="props">
           <div class="q-pa-xs col-xs-12 col-sm-6 col-md-4">
-            <q-card flat bordered class="q-mb-sm">
-              <q-card-section class="row justify-between items-center q-pb-none">
+            <q-card flat bordered class="q-mb-sm full-height column">
+              <q-card-section class="row justify-between items-center q-pb-none col-auto">
                 <div class="text-subtitle1 text-weight-bold">{{ props.row.username }}</div>
                 <q-chip
                   dense
@@ -140,7 +140,7 @@
                 </q-chip>
               </q-card-section>
 
-              <q-card-section>
+              <q-card-section class="col">
                 <div class="text-caption text-grey-7 q-mb-xs">Permissions:</div>
                 <div class="permissions-container-mobile">
                   <div v-if="!props.row.showAllPermissions" class="permissions-limited">
@@ -186,31 +186,33 @@
 
               <q-separator />
 
-              <q-card-actions align="right" class="row items-center">
-                <div class="text-caption text-grey q-mr-auto q-pl-sm">
-                  Created: {{ props.row.formattedCreatedAt || 'N/A' }}
+              <q-card-actions class="row items-center justify-between no-wrap col-auto">
+                <div class="text-caption text-grey q-pl-sm ellipsis">
+                  {{ props.row.formattedCreatedAt || 'N/A' }}
                 </div>
 
-                <q-btn
-                  icon="settings"
-                  size="sm"
-                  color="green"
-                  dense
-                  flat
-                  round
-                  @click="$emit('manage-roles', props.row)"
-                  v-if="canManageRoles"
-                />
-                <q-btn
-                  icon="delete"
-                  size="sm"
-                  color="negative"
-                  dense
-                  flat
-                  round
-                  @click="$emit('delete', props.row)"
-                  v-if="canDeleteUser"
-                />
+                <div class="row no-wrap q-gutter-xs">
+                  <q-btn
+                    icon="settings"
+                    size="sm"
+                    color="green"
+                    dense
+                    flat
+                    round
+                    @click="$emit('manage-roles', props.row)"
+                    v-if="canManageRoles"
+                  />
+                  <q-btn
+                    icon="delete"
+                    size="sm"
+                    color="negative"
+                    dense
+                    flat
+                    round
+                    @click="$emit('delete', props.row)"
+                    v-if="canDeleteUser"
+                  />
+                </div>
               </q-card-actions>
             </q-card>
           </div>
@@ -222,9 +224,9 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { useQuasar } from 'quasar' // 1. Import useQuasar
+import { useQuasar } from 'quasar'
 
-const $q = useQuasar() // 2. Initialize
+const $q = useQuasar()
 
 const props = defineProps({
   users: { type: Array, default: () => [] },
@@ -245,31 +247,20 @@ const search = ref('')
 const expandedRows = ref({})
 
 const columns = [
+  { name: 'avatar', label: '', field: 'avatar', align: 'center', sortable: false },
   { name: 'username', label: 'Username', field: 'username', align: 'left', sortable: true },
-  { name: 'role', label: 'Role', field: 'role', align: 'left', sortable: true, width: '150px' },
-  {
-    name: 'permissions',
-    label: 'Permissions',
-    field: 'permissions',
-    align: 'left',
-    sortable: false,
-  },
+  { name: 'email', label: 'Email', field: 'email', align: 'left', sortable: true },
+  { name: 'role', label: 'Role', field: 'role', align: 'center', sortable: true },
+  { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
+  { name: 'permissions', label: 'Permissions', field: 'permissions', align: 'left' },
   {
     name: 'createdAt',
-    label: 'Created Date',
-    field: 'formattedCreatedAt',
-    align: 'left',
-    sortable: true,
-    width: '220px',
-  },
-  {
-    name: 'actions',
-    label: 'Actions',
-    field: 'actions',
+    label: 'Created At',
+    field: 'createdAt',
     align: 'center',
-    sortable: false,
-    width: '150px',
+    sortable: true,
   },
+  { name: 'actions', label: 'Actions', field: 'actions', align: 'center' },
 ]
 
 // Search Filter

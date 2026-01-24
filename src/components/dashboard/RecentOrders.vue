@@ -6,19 +6,21 @@
     </q-card-section>
 
     <q-list separator>
-      <q-item v-for="order in orders" :key="order.id" class="q-py-md">
+      <q-item v-for="order in orders" :key="order.id" :class="$q.screen.xs ? 'q-py-sm' : 'q-py-md'">
         <q-item-section avatar>
-          <q-avatar color="blue-1" text-color="primary" icon="receipt_long" />
+          <q-avatar color="blue-1" text-color="primary" icon="receipt_long" :size="$q.screen.xs ? 'md' : '40px'" />
         </q-item-section>
         <q-item-section>
-          <q-item-label class="text-weight-bold">Order #{{ order.id }}</q-item-label>
+          <q-item-label class="text-weight-bold" :class="{ 'text-subtitle2': $q.screen.xs }">
+            Order #{{ order.id }}
+          </q-item-label>
           <q-item-label caption>
             {{ formatTime(order.createdAt || order.date) }} • {{ getItemCount(order) }} items
           </q-item-label>
         </q-item-section>
         <q-item-section side>
           <div class="text-right">
-            <div class="text-subtitle2 text-weight-bold">
+            <div class="text-weight-bold" :class="$q.screen.xs ? 'text-caption' : 'text-subtitle2'">
               {{ formatCurrency(orderTotal(order)) }}
             </div>
             <q-badge
@@ -26,6 +28,7 @@
               :label="order.status"
               outline
               class="q-mt-xs"
+              :class="{ 'text-caption': $q.screen.xs }"
             />
           </div>
         </q-item-section>
