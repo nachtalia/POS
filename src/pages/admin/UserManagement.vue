@@ -1,37 +1,53 @@
 <template>
-  <q-page class="q-pa-md bg-grey-2">
+  <q-page class="q-pa-sm q-pa-md-md bg-grey-2">
     <div class="row justify-center">
       <div class="col-12" style="max-width: 1400px">
         <div class="row items-center justify-between q-mb-md">
-          <div>
+          <div class="col-12 col-sm-auto q-mb-md q-mb-sm-none">
             <div class="text-h5 text-weight-bold text-blue-grey-9">User Management</div>
             <div class="text-caption text-grey-7">Manage users, access, and roles</div>
           </div>
 
-          <div class="row q-gutter-sm">
-            <q-btn
-              v-if="canManagePermissions"
-              color="secondary"
-              icon="settings"
-              label="Manage Roles"
-              @click="showRoleManager = true"
-              outline
-            />
+          <div class="col-12 col-sm-auto">
+            <div class="row q-col-gutter-sm">
+              <div class="col-12 col-sm-auto" v-if="canManagePermissions">
+                <q-btn
+                  outline
+                  rounded
+                  no-caps
+                  color="blue-grey-8"
+                  icon="settings"
+                  label="MANAGE ROLES"
+                  @click="showRoleManager = true"
+                  class="full-width"
+                />
+              </div>
 
-            <div v-if="canAddUser">
-              <q-btn
-                color="primary"
-                icon="add"
-                label="Add New User"
-                @click="showAddUserPanel = true"
-              />
+              <div class="col-12 col-sm-auto" v-if="canAddUser">
+                <q-btn
+                  unelevated
+                  rounded
+                  no-caps
+                  color="primary"
+                  icon="add"
+                  label="ADD NEW USER"
+                  @click="showAddUserPanel = true"
+                  class="full-width"
+                />
+              </div>
             </div>
           </div>
         </div>
-
         <AddNewUser v-model="showAddUserPanel" @add="refreshData" />
 
-        <q-dialog v-model="showRoleManager" full-width style="max-width: 1200px">
+        <q-dialog
+          v-model="showRoleManager"
+          full-width
+          :maximized="$q.screen.lt.md"
+          transition-show="slide-up"
+          transition-hide="slide-down"
+          style="max-width: 1200px"
+        >
           <RoleManager />
         </q-dialog>
 
@@ -46,6 +62,7 @@
           @manage-roles="openManageUserDialog"
           @edit="openManageUserDialog"
           @delete="confirmDeleteUser"
+          :grid="$q.screen.xs"
         />
 
         <ManageUserRoles
@@ -55,14 +72,21 @@
         />
 
         <q-dialog v-model="deleteDialog" persistent>
-          <q-card>
+          <q-card style="min-width: 300px">
             <q-card-section class="row items-center">
               <q-avatar icon="warning" color="warning" text-color="white" />
               <span class="q-ml-sm">Are you sure you want to delete this user?</span>
             </q-card-section>
+
             <q-card-actions align="right">
-              <q-btn flat label="Cancel" color="grey" v-close-popup />
-              <q-btn label="Delete" color="negative" @click="deleteUser" :loading="loading" />
+              <q-btn flat rounded label="Cancel" color="grey" v-close-popup />
+              <q-btn
+                rounded
+                label="Delete"
+                color="negative"
+                @click="deleteUser"
+                :loading="loading"
+              />
             </q-card-actions>
           </q-card>
         </q-dialog>
@@ -79,7 +103,7 @@ import { useQuasar } from 'quasar'
 import AddNewUser from 'src/components/Usermanagement/AddNewUser.vue'
 import UserList from 'src/components/Usermanagement/UserList.vue'
 import ManageUserRoles from 'src/components/Usermanagement/ManageUserRole.vue'
-import RoleManager from 'src/components/Usermanagement/RoleManager.vue' // <--- NEW IMPORT
+import RoleManager from 'src/components/Usermanagement/RoleManager.vue'
 
 import { useUserManagementStore } from 'src/stores/usermanagementStore.js'
 import { useAuthStore } from 'src/features/index.js'
@@ -94,7 +118,7 @@ const loading = computed(() => userStore.loading)
 
 // Dialog Controls
 const showAddUserPanel = ref(false)
-const showRoleManager = ref(false) // <--- NEW STATE
+const showRoleManager = ref(false)
 const manageUserDialog = ref(false)
 const deleteDialog = ref(false)
 
@@ -175,6 +199,11 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* Ensure tables don't overflow on mobile horizontally */
+:deep(.q-table__container) {
+  width: 100%;
+}
+
 .q-table {
   background-color: white;
 }

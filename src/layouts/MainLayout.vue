@@ -56,7 +56,7 @@
       </q-toolbar>
     </q-header>
 
-    <TheSidebar v-model="leftDrawerOpen" />
+    <TheSidebar v-model="leftDrawerOpen" :behavior="$q.screen.lt.md ? 'mobile' : 'desktop'" />
 
     <q-page-container class="bg-grey-1">
       <router-view />
@@ -108,6 +108,7 @@ const isSuperAdmin = computed(() => {
 watch(
   () => route.fullPath,
   () => {
+    // Logic to ensure sidebar opens on desktop but closes on mobile after navigation
     if ($q.screen.gt.sm) {
       leftDrawerOpen.value = true
     } else {

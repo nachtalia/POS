@@ -1,32 +1,36 @@
 <template>
-  <q-page class="q-pa-md bg-grey-2">
+  <q-page class="q-pa-sm q-pa-md-md bg-grey-2">
     <div class="row justify-center">
       <div class="col-12" style="max-width: 1400px">
         <div class="row items-center justify-between q-mb-md">
-          <div>
+          <div class="col">
             <div class="text-h5 text-weight-bold text-blue-grey-9">Transactions</div>
-            <div class="text-caption text-grey-7">Manage and track your order history</div>
+            <div class="text-caption text-grey-7 line-height-normal">Manage history</div>
           </div>
-          <q-btn
-            color="primary"
-            icon="cloud_download"
-            label="Export Report"
-            no-caps
-            unelevated
-            class="radius-8"
-            @click="exportTransactions"
-          />
+
+          <div class="col-auto">
+            <q-btn
+              color="primary"
+              icon="cloud_download"
+              label="Export"
+              no-caps
+              unelevated
+              :dense="$q.screen.lt.sm"
+              class="radius-8"
+              @click="exportTransactions"
+            />
+          </div>
         </div>
 
         <q-card class="shadow-2 rounded-xl bg-white overflow-hidden">
           <div class="q-pa-md border-bottom-light">
-            <div class="row q-col-gutter-md">
+            <div class="row q-col-gutter-sm">
               <div class="col-12 col-md-4">
                 <q-input
                   v-model="searchQuery"
                   outlined
                   dense
-                  placeholder="Search Order #, Cashier, Customer..."
+                  placeholder="Search Order #, Name..."
                   class="rounded-input"
                   bg-color="grey-1"
                 >
@@ -43,40 +47,50 @@
                 </q-input>
               </div>
 
-              <div class="col-12 col-md-3">
+              <div class="col-6 col-md-3">
                 <q-input
                   v-model="fromDate"
                   outlined
                   dense
-                  label="From Date"
+                  label="From"
                   readonly
                   class="rounded-input"
                   bg-color="grey-1"
                 >
                   <template v-slot:prepend>
-                    <q-icon name="event" class="text-primary" />
+                    <q-icon name="event" class="text-primary cursor-pointer">
+                      <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                        <q-date v-model="fromDate" mask="YYYY-MM-DD" today-btn color="primary">
+                          <div class="row items-center justify-end">
+                            <q-btn v-close-popup label="Close" color="primary" flat />
+                          </div>
+                        </q-date>
+                      </q-popup-proxy>
+                    </q-icon>
                   </template>
-                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                    <q-date v-model="fromDate" mask="YYYY-MM-DD" today-btn color="primary" />
-                  </q-popup-proxy>
                 </q-input>
               </div>
-              <div class="col-12 col-md-3">
+              <div class="col-6 col-md-3">
                 <q-input
                   v-model="toDate"
                   outlined
                   dense
-                  label="To Date"
+                  label="To"
                   readonly
                   class="rounded-input"
                   bg-color="grey-1"
                 >
                   <template v-slot:prepend>
-                    <q-icon name="event" class="text-primary" />
+                    <q-icon name="event" class="text-primary cursor-pointer">
+                      <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                        <q-date v-model="toDate" mask="YYYY-MM-DD" today-btn color="primary">
+                          <div class="row items-center justify-end">
+                            <q-btn v-close-popup label="Close" color="primary" flat />
+                          </div>
+                        </q-date>
+                      </q-popup-proxy>
+                    </q-icon>
                   </template>
-                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                    <q-date v-model="toDate" mask="YYYY-MM-DD" today-btn color="primary" />
-                  </q-popup-proxy>
                 </q-input>
               </div>
             </div>
@@ -90,6 +104,7 @@
             class="sticky-header-table"
             v-model:pagination="pagination"
             :rows-per-page-options="[10, 20, 50]"
+            :grid="$q.screen.lt.md"
           >
             <template v-slot:header="props">
               <q-tr :props="props">
@@ -102,6 +117,84 @@
                   {{ col.label }}
                 </q-th>
               </q-tr>
+            </template>
+
+            <template v-slot:item="props">
+              <div class="col-12 col-sm-6 q-pa-sm">
+                <q-card class="rounded-xl shadow-1 border-light full-height">
+                  <q-card-section class="q-pb-none">
+                    <div class="row items-center justify-between">
+                      <div>
+                        <div class="text-weight-bold text-primary font-mono">
+                          {{ props.row.orderNumber || props.row.id?.substring(0, 8).toUpperCase() }}
+                        </div>
+                        <div class="text-caption text-grey-6">
+                          {{ formatDate(props.row.createdAt || props.row.date) }}
+                        </div>
+                      </div>
+                      <q-badge
+                        :color="getStatusColor(props.row.status)"
+                        class="q-px-sm q-py-xs"
+                        rounded
+                      >
+                        {{ props.row.status }}
+                      </q-badge>
+                    </div>
+                  </q-card-section>
+
+                  <q-card-section class="q-py-sm">
+                    <div class="text-subtitle2 text-blue-grey-9 q-mb-xs">
+                      {{ props.row.customerName || 'Walk-in Customer' }}
+                    </div>
+
+                    <div class="row q-gutter-x-md text-caption text-grey-7">
+                      <div class="row items-center">
+                        <q-icon
+                          :name="getPaymentIcon(props.row.paymentMethod)"
+                          size="xs"
+                          class="q-mr-xs"
+                        />
+                        {{ props.row.paymentMethod || 'Cash' }}
+                      </div>
+                      <div class="row items-center">
+                        <q-icon name="shopping_bag" size="xs" class="q-mr-xs" />
+                        {{ props.row.itemCount || (props.row.items ? props.row.items.length : 0) }}
+                        Items
+                      </div>
+                    </div>
+                  </q-card-section>
+
+                  <q-separator />
+
+                  <q-card-section class="q-pt-sm">
+                    <div class="row items-center justify-between">
+                      <div class="text-h6 text-weight-bold text-grey-9">
+                        {{ formatCurrency(computeTotal(props.row)) }}
+                      </div>
+                      <div class="row q-gutter-x-sm">
+                        <q-btn
+                          flat
+                          round
+                          dense
+                          color="grey-7"
+                          icon="visibility"
+                          class="bg-grey-2"
+                          @click="viewOrder(props.row)"
+                        />
+                        <q-btn
+                          flat
+                          round
+                          dense
+                          color="primary"
+                          icon="print"
+                          class="bg-blue-1"
+                          @click="printOrder(props.row)"
+                        />
+                      </div>
+                    </div>
+                  </q-card-section>
+                </q-card>
+              </div>
             </template>
 
             <template v-slot:body-cell-orderNumber="props">
@@ -230,9 +323,11 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useQuasar } from 'quasar' // Import useQuasar
 import { useOrderStore } from '../../stores/orderStore'
 import { useFormatters } from 'src/composables/useFormatters'
 
+const $q = useQuasar() // Initialize Quasar
 const orderStore = useOrderStore()
 const { formatDate, formatCurrency } = useFormatters()
 
@@ -297,7 +392,7 @@ const printOrder = (row) => {
   // TODO: Implement Print Logic
 }
 
-// --- UPDATED COLUMNS ---
+// --- COLUMNS ---
 const columns = [
   {
     name: 'orderNumber',
@@ -372,7 +467,7 @@ const columns = [
   },
 ]
 
-// --- UPDATED SEARCH LOGIC ---
+// --- SEARCH LOGIC ---
 const filteredTransactions = computed(() => {
   let list = orderStore.orders || []
   const from = fromDate.value ? new Date(fromDate.value) : null
@@ -393,14 +488,9 @@ const filteredTransactions = computed(() => {
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
     list = list.filter((t) => {
-      // Check Order Number (e.g. 2026...)
       const orderNum = t.orderNumber ? String(t.orderNumber).toLowerCase() : ''
       const sysId = t.id ? t.id.toLowerCase() : ''
-
-      // Check Customer Name
       const custName = (t.customerName || t.customer?.name || '').toLowerCase()
-
-      // Check Cashier/User Name
       const userName = (t.userName || t.cashierName || t.user?.name || '').toLowerCase()
 
       return (
@@ -413,7 +503,6 @@ const filteredTransactions = computed(() => {
 
 const exportTransactions = () => {
   console.log('Exporting...', filteredTransactions.value.length)
-  // Implementation for export usually goes here (e.g. exportFile from Quasar)
 }
 
 onMounted(async () => {
@@ -440,6 +529,11 @@ onMounted(async () => {
   border-bottom: 1px solid #f0f0f0;
 }
 
+.border-light {
+  border: 1px solid #e0e0e0;
+}
+
+/* Specific styling for Desktop Table */
 :deep(.q-table tbody tr:hover) {
   background-color: #fafafa;
 }
@@ -451,5 +545,12 @@ onMounted(async () => {
 .font-mono {
   font-family: 'Roboto Mono', monospace;
   letter-spacing: -0.5px;
+}
+
+/* Helpers for full width buttons on mobile */
+@media (max-width: 599px) {
+  .full-width-xs {
+    width: 100%;
+  }
 }
 </style>

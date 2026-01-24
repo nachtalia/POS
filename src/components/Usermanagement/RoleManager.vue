@@ -1,23 +1,24 @@
 <template>
-  <q-card class="column full-height" style="min-height: 400px">
-    <q-card-section class="bg-primary text-white row items-center justify-between">
+  <q-card class="column full-height overflow-hidden" style="min-height: 600px">
+    <q-card-section class="bg-primary text-white row items-center justify-between q-py-sm shrink">
       <div class="text-h6">Role Management</div>
       <q-btn flat round dense icon="close" v-close-popup />
     </q-card-section>
 
-    <q-card-section class="col q-pa-sm q-pa-md-md">
-      <div class="row justify-between q-mb-md">
-        <div class="text-subtitle1 text-grey-8 q-mb-xs q-mb-sm-none">
-          Configure access levels for your system
+    <q-card-section class="col scroll q-pa-md">
+      <div class="row justify-between items-center q-mb-md q-col-gutter-y-sm">
+        <div class="col-12 col-sm-auto">
+          <div class="text-subtitle1 text-grey-8">Configure access levels</div>
         </div>
-        <q-btn 
-          color="secondary" 
-          icon="add" 
-          label="Create New Role" 
-          @click="openDialog()"
-          class="full-width q-mb-sm q-mb-sm-none"
-          :class="$q.screen.lt.sm ? '' : 'self-start'"
-        />
+        <div class="col-12 col-sm-auto text-right">
+          <q-btn
+            color="secondary"
+            icon="add"
+            label="Create New Role"
+            @click="openDialog()"
+            class="full-width q-px-sm"
+          />
+        </div>
       </div>
 
       <q-table
@@ -27,118 +28,181 @@
         flat
         bordered
         :loading="loading"
-        :rows-per-page-options="[5, 10, 15]"
-        :pagination="{ rowsPerPage: 10 }"
-        class="sticky-header"
+        :grid="$q.screen.xs"
+        :rows-per-page-options="[10, 20, 0]"
       >
-        <!-- Mobile Grid View -->
-        <template v-slot:item="props">
-          <div class="q-pa-xs col-xs-12 col-sm-6 col-md-4">
-            <q-card bordered flat class="full-height">
-              <q-card-section>
-                <div class="text-subtitle1 text-weight-bold q-mb-sm">{{ props.row.label }}</div>
-                <div class="text-caption text-grey-7 q-mb-xs">
-                  <q-icon name="fingerprint" size="14px" class="q-mr-xs" />
-                  {{ props.row.value }}
-                </div>
-                <div class="q-mb-sm">
-                  <q-badge color="blue-grey" outline>
-                    {{ props.row.permissions?.length || 0 }} Permissions
-                  </q-badge>
-                </div>
-              </q-card-section>
-              <q-separator />
-              <q-card-actions align="right" class="q-pa-sm">
-                <q-btn
-                  flat
-                  round
-                  color="primary"
-                  icon="edit"
-                  size="sm"
-                  @click="openDialog(props.row)"
-                >
-                  <q-tooltip>Edit Role</q-tooltip>
-                </q-btn>
-                <q-btn
-                  flat
-                  round
-                  color="negative"
-                  icon="delete"
-                  size="sm"
-                  @click="confirmDelete(props.row)"
-                  :disable="['admin'].includes(props.row.value)"
-                >
-                  <q-tooltip>Delete Role</q-tooltip>
-                </q-btn>
-              </q-card-actions>
-            </q-card>
-          </div>
-        </template>
-
-        <!-- Desktop Table View -->
-        <template v-slot:body-cell-label="props">
-          <q-td :props="props" class="text-weight-medium">
-            {{ props.value }}
-          </q-td>
-        </template>
-
-        <template v-slot:body-cell-value="props">
-          <q-td :props="props">
-            <div class="row items-center">
-              <q-icon name="fingerprint" size="14px" class="q-mr-xs text-grey-6" />
-              <span class="text-monospace">{{ props.value }}</span>
-            </div>
-          </q-td>
-        </template>
-
         <template v-slot:body-cell-permissions="props">
-          <q-td :props="props">
-            <q-badge color="blue-grey" outline>
-              {{ props.row.permissions?.length || 0 }} Permissions
-            </q-badge>
+          <q-td :props="props" style="white-space: normal; min-width: 300px">
+            <div v-if="props.row.permissions && props.row.permissions.length > 0">
+              <div v-if="!isExpanded(props.row.id)" class="row q-gutter-xs">
+                <q-badge
+                  v-for="perm in props.row.permissions.slice(0, 3)"
+                  :key="perm"
+                  color="grey-3"
+                  text-color="grey-9"
+                  class="q-pa-xs border-grey"
+                >
+                  {{ perm }}
+                </q-badge>
+
+                <q-badge
+                  v-if="props.row.permissions.length > 3"
+                  color="primary"
+                  class="cursor-pointer q-pa-xs"
+                  @click="toggleExpand(props.row.id)"
+                >
+                  +{{ props.row.permissions.length - 3 }} more
+                </q-badge>
+              </div>
+
+              <div v-else class="row q-gutter-xs">
+                <q-badge
+                  v-for="perm in props.row.permissions"
+                  :key="perm"
+                  color="grey-3"
+                  text-color="grey-9"
+                  class="q-pa-xs border-grey"
+                >
+                  {{ perm }}
+                </q-badge>
+
+                <q-badge
+                  color="primary"
+                  outline
+                  class="cursor-pointer q-pa-xs"
+                  @click="toggleExpand(props.row.id)"
+                >
+                  Show less
+                </q-badge>
+              </div>
+            </div>
+            <div v-else class="text-grey-5 text-caption">No permissions assigned</div>
           </q-td>
         </template>
 
         <template v-slot:body-cell-actions="props">
           <q-td :props="props" class="text-right">
-            <div class="row justify-end q-gutter-xs">
-              <q-btn
-                flat
-                round
-                color="primary"
-                icon="edit"
-                size="sm"
-                @click="openDialog(props.row)"
-              >
-                <q-tooltip>Edit Role</q-tooltip>
-              </q-btn>
-              <q-btn
-                flat
-                round
-                color="negative"
-                icon="delete"
-                size="sm"
-                @click="confirmDelete(props.row)"
-                :disable="['admin'].includes(props.row.value)"
-              >
-                <q-tooltip>Delete Role</q-tooltip>
-              </q-btn>
-            </div>
+            <q-btn flat round color="primary" icon="edit" size="sm" @click="openDialog(props.row)">
+              <q-tooltip>Edit Role</q-tooltip>
+            </q-btn>
+            <q-btn
+              flat
+              round
+              color="negative"
+              icon="delete"
+              size="sm"
+              @click="confirmDelete(props.row)"
+              :disable="['admin'].includes(props.row.value)"
+            >
+              <q-tooltip>Delete Role</q-tooltip>
+            </q-btn>
           </q-td>
+        </template>
+
+        <template v-slot:item="props">
+          <div class="q-pa-xs col-xs-12 col-sm-6 col-md-4">
+            <q-card flat bordered class="q-mb-sm shadow-1 full-height">
+              <q-card-section class="row justify-between items-center bg-grey-1 q-py-sm">
+                <div class="text-subtitle1 text-weight-bold">{{ props.row.label }}</div>
+                <q-chip
+                  dense
+                  square
+                  color="blue-grey-1"
+                  text-color="blue-grey-8"
+                  class="text-caption"
+                >
+                  {{ props.row.value }}
+                </q-chip>
+              </q-card-section>
+
+              <q-separator />
+
+              <q-card-section class="q-py-md">
+                <div class="text-caption text-grey-7 q-mb-xs">Permissions:</div>
+
+                <div v-if="props.row.permissions && props.row.permissions.length > 0">
+                  <div v-if="!isExpanded(props.row.id)" class="row q-gutter-xs">
+                    <q-badge
+                      v-for="perm in props.row.permissions.slice(0, 3)"
+                      :key="perm"
+                      color="grey-3"
+                      text-color="grey-9"
+                      class="border-grey"
+                    >
+                      {{ perm }}
+                    </q-badge>
+                    <q-badge
+                      v-if="props.row.permissions.length > 3"
+                      color="primary"
+                      class="cursor-pointer"
+                      @click="toggleExpand(props.row.id)"
+                    >
+                      +{{ props.row.permissions.length - 3 }} more
+                    </q-badge>
+                  </div>
+
+                  <div v-else class="row q-gutter-xs">
+                    <q-badge
+                      v-for="perm in props.row.permissions"
+                      :key="perm"
+                      color="grey-3"
+                      text-color="grey-9"
+                      class="border-grey"
+                    >
+                      {{ perm }}
+                    </q-badge>
+                    <q-badge
+                      color="primary"
+                      outline
+                      class="cursor-pointer"
+                      @click="toggleExpand(props.row.id)"
+                    >
+                      Show less
+                    </q-badge>
+                  </div>
+                </div>
+                <div v-else class="text-grey-5 text-italic">None</div>
+              </q-card-section>
+
+              <q-separator />
+
+              <q-card-actions align="right">
+                <q-btn
+                  flat
+                  color="primary"
+                  icon="edit"
+                  label="Edit"
+                  size="sm"
+                  @click="openDialog(props.row)"
+                />
+                <q-btn
+                  flat
+                  color="negative"
+                  icon="delete"
+                  label="Delete"
+                  size="sm"
+                  @click="confirmDelete(props.row)"
+                  :disable="['admin'].includes(props.row.value)"
+                />
+              </q-card-actions>
+            </q-card>
+          </div>
         </template>
       </q-table>
     </q-card-section>
 
-    <q-dialog v-model="dialogVisible" persistent :position="$q.screen.lt.sm ? 'bottom' : 'right'">
-      <q-card
-        class="column"
-        :style="
-          $q.screen.lt.sm
-            ? 'width: 100vw; height: 100vh; max-height: 100vh;'
-            : 'width: 500px; max-width: 100vw; height: 100vh'
-        "
-      >
-        <q-card-section class="row items-center justify-between bg-primary text-white q-py-md">
+    <q-dialog
+      v-model="dialogVisible"
+      persistent
+      position="right"
+      maximized
+      transition-show="slide-left"
+      transition-hide="slide-right"
+    >
+      <q-card class="column" style="width: 500px; max-width: 100vw">
+        <q-card-section
+          class="row items-center justify-between bg-primary text-white q-py-md shrink"
+        >
           <div class="text-h6">{{ isEditing ? 'Edit Role' : 'Create New Role' }}</div>
           <q-btn flat round dense icon="close" color="white" v-close-popup size="sm" />
         </q-card-section>
@@ -163,11 +227,10 @@
               <q-input
                 outlined
                 v-model="form.value"
-                label="Role ID (System Identifier)"
+                label="Role ID"
                 dense
                 :readonly="isEditing"
                 :disable="isEditing"
-                hint="Unique ID (e.g. senior_cashier)"
                 :rules="[
                   (val) => !!val || 'Required',
                   (val) => /^[a-z_]+$/.test(val) || 'Lowercase letters and underscores only',
@@ -212,7 +275,6 @@
             <div class="text-subtitle2 text-weight-medium text-blue-grey-9 q-mb-xs">
               Permission Configuration
             </div>
-
             <div class="row q-col-gutter-xs q-mb-sm">
               <q-btn
                 outline
@@ -240,7 +302,6 @@
                 header-class="bg-grey-1"
                 :label="name"
                 dense
-                :class="$q.screen.lt.sm ? 'q-py-xs' : ''"
               >
                 <q-item
                   v-for="action in group"
@@ -259,12 +320,7 @@
                     />
                   </q-item-section>
                   <q-item-section>
-                    <q-item-label class="text-weight-medium" :class="$q.screen.lt.sm ? 'text-caption' : ''">
-                      {{ action.label }}
-                    </q-item-label>
-                    <q-item-label caption :class="$q.screen.lt.sm ? 'text-caption' : ''">
-                      {{ action.value }}
-                    </q-item-label>
+                    <q-item-label class="text-weight-medium">{{ action.label }}</q-item-label>
                   </q-item-section>
                 </q-item>
               </q-expansion-item>
@@ -274,16 +330,15 @@
 
         <q-separator />
 
-        <q-card-actions align="right" class="q-pa-md bg-grey-1">
-          <q-btn flat label="Cancel" color="grey" v-close-popup :class="$q.screen.lt.sm ? 'q-px-sm' : 'q-px-lg'" />
+        <q-card-actions align="right" class="q-pa-md bg-grey-1 shrink">
+          <q-btn flat label="Cancel" color="grey" v-close-popup class="q-px-lg" />
           <q-btn
-            :label="isEditing ? 'Update Role' : 'Create Role'"
+            :label="isEditing ? 'Update' : 'Create'"
             color="green-7"
             @click="saveRole"
             :loading="saving"
             icon="save"
-            :class="$q.screen.lt.sm ? 'q-px-sm' : 'q-px-lg'"
-            class="q-ml-xs"
+            class="q-px-lg"
           />
         </q-card-actions>
       </q-card>
@@ -299,11 +354,12 @@ import { useUserManagementStore } from 'src/stores/usermanagementStore.js'
 const $q = useQuasar()
 const userStore = useUserManagementStore()
 
-// --- State ---
 const dialogVisible = ref(false)
 const saving = ref(false)
 const isEditing = ref(false)
 const editingId = ref(null)
+// Added for table expand/collapse logic
+const expandedRows = ref({})
 
 const form = ref({
   label: '',
@@ -321,7 +377,6 @@ const columns = [
   { name: 'actions', label: 'Actions', field: 'actions', align: 'right' },
 ]
 
-// --- Permissions Definitions (Matches AddNewUser.vue) ---
 const actionsByPage = {
   Dashboard: [{ label: 'View Dashboard', value: 'dashboard:view' }],
   Products: [
@@ -351,17 +406,18 @@ const actionsByPage = {
   ],
 }
 
-// --- Lifecycle ---
 onMounted(() => {
   userStore.fetchRoles()
 })
 
-// --- Methods ---
+// Toggle Logic for Table
+const isExpanded = (id) => !!expandedRows.value[id]
+const toggleExpand = (id) => {
+  expandedRows.value[id] = !expandedRows.value[id]
+}
 
-// Helper: Auto-generate ID from Name
 const autoFillValue = (val) => {
   if (!isEditing.value && val) {
-    // Convert "Senior Cashier" -> "senior_cashier"
     form.value.value = val
       .toLowerCase()
       .replace(/\s+/g, '_')
@@ -452,42 +508,26 @@ const confirmDelete = (role) => {
 <style scoped>
 /* Mobile optimizations */
 @media (max-width: 599px) {
-  .q-table--mobile .q-table__top {
-    padding: 8px;
-  }
-  
   .q-card__section--vert {
     padding: 12px;
   }
-}
 
-/* Sticky table header on mobile */
-.sticky-header :deep(.q-table__top),
-.sticky-header :deep(.q-table__middle) {
-  max-height: calc(100vh - 150px);
-}
-
-.sticky-header :deep(.q-table__thead) {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background-color: white;
-}
-
-/* Better touch targets on mobile */
-@media (max-width: 599px) {
   .q-btn {
     min-height: 36px;
   }
-  
-  .q-item {
-    min-height: 40px;
-  }
-  
+
   .q-checkbox__inner {
     width: 20px;
     height: 20px;
   }
+}
+
+.border-grey {
+  border: 1px solid #e0e0e0;
+}
+
+.cursor-pointer {
+  cursor: pointer;
 }
 
 /* Responsive typography */
