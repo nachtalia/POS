@@ -1,31 +1,46 @@
 <template>
   <q-card class="glass-card chart-card">
-    <q-card-section>
-      <div class="row items-center justify-between" :class="{ 'column q-gutter-y-sm': $q.screen.xs }">
-        <div :class="{ 'text-center': $q.screen.xs }">
-          <div class="text-h6 text-weight-bold">Sales Performance</div>
-          <div class="text-caption text-grey-7">{{ selectedPeriod.label }} performance metrics</div>
-        </div>
-        <div class="row items-center q-gutter-sm" :class="{ 'justify-center full-width': $q.screen.xs }">
-          <q-btn-group unelevated class="period-selector">
-            <q-btn
-              v-for="period in timePeriods"
-              :key="period.value"
-              :label="period.label"
-              :color="selectedPeriod.value === period.value ? 'primary' : 'grey-2'"
-              :text-color="selectedPeriod.value === period.value ? 'white' : 'grey-8'"
-              @click="changePeriod(period)"
-              size="sm"
-              padding="xs md"
-            />
-          </q-btn-group>
-        </div>
-      </div>
-    </q-card-section>
+    <q-expansion-item
+      v-model="expanded"
+      :hide-expand-icon="!$q.screen.lt.md"
+      :class="{ 'non-selectable-header': !$q.screen.lt.md }"
+    >
+      <template v-slot:header>
+        <q-item-section>
+          <div
+            class="full-width"
+            :class="$q.screen.xs ? 'column items-start q-gutter-y-sm' : 'row items-center justify-between'"
+          >
+            <div>
+              <div class="text-h6 text-weight-bold">Sales Performance</div>
+              <div class="text-caption text-grey-7">{{ selectedPeriod.label }} performance metrics</div>
+            </div>
+            <div
+              class="row items-center q-gutter-sm"
+              :class="{ 'justify-center full-width': $q.screen.xs }"
+              @click.stop
+              v-if="!$q.screen.xs"
+            >
+              <q-btn-group unelevated class="period-selector">
+                <q-btn
+                  v-for="period in timePeriods"
+                  :key="period.value"
+                  :label="period.label"
+                  :color="selectedPeriod.value === period.value ? 'primary' : 'grey-2'"
+                  :text-color="selectedPeriod.value === period.value ? 'white' : 'grey-8'"
+                  @click="changePeriod(period)"
+                  size="sm"
+                  padding="xs md"
+                />
+              </q-btn-group>
+            </div>
+          </div>
+        </q-item-section>
+      </template>
 
-    <q-separator color="grey-2" />
+      <q-separator color="grey-2" />
 
-    <q-card-section>
+      <q-card-section>
       <div class="row q-col-gutter-sm q-mb-md justify-center">
         <div class="col-6 col-md-3" v-for="stat in miniStats" :key="stat.label">
           <div class="text-center q-pa-sm bg-grey-1 rounded-borders">
@@ -73,19 +88,35 @@
           </div>
         </div>
       </div>
-    </q-card-section>
+      </q-card-section>
+    </q-expansion-item>
   </q-card>
 </template>
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { useFormatters } from 'src/composables/useFormatters'
+import { useQuasar } from 'quasar'
 
 const props = defineProps({
   orders: { type: Array, default: () => [] },
 })
 
+const $q = useQuasar()
 const { formatCurrency } = useFormatters()
+
+const mobileExpanded = ref(false)
+
+const expanded = computed({
+  get() {
+    return !$q.screen.lt.md || mobileExpanded.value
+  },
+  set(val) {
+    if ($q.screen.lt.md) {
+      mobileExpanded.value = val
+    }
+  },
+})
 
 const timePeriods = [
   { label: '7 Days', value: '7days', type: 'daily', days: 7 },
@@ -291,5 +322,12 @@ onMounted(() => {
 
 .period-selector .q-btn {
   font-weight: 500;
+}
+
+.non-selectable-header :deep(.q-item) {
+  cursor: default !important;
+}
+.non-selectable-header :deep(.q-focus-helper) {
+  display: none !important;
 }
 </style>

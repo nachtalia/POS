@@ -4,13 +4,61 @@
     @update:model-value="$emit('update:modelValue', $event)"
     persistent
   >
-    <q-card style="min-width: 400px">
-      <q-card-section>
+    <q-card :style="$q.screen.lt.sm ? 'width: 100vw; margin: 1px; padding: 17px;' : 'min-width: 400px'">
+      <q-card-section class="row items-center justify-between" :class="$q.screen.lt.sm ? 'q-pa-sm' : ''">
         <div class="text-h6">{{ editingProduct ? 'Edit Product' : 'Add Product' }}</div>
+        <q-btn icon="close" flat round dense v-close-popup />
       </q-card-section>
 
-      <q-card-section>
-        <q-form ref="myForm" class="q-gutter-md" @submit.prevent="$emit('save', productForm)">
+      <q-card-section :class="$q.screen.lt.sm ? 'q-pa-sm' : ''">
+        <q-form ref="myForm" :class="$q.screen.lt.sm ? 'q-gutter-sm' : 'q-gutter-md'" @submit.prevent="$emit('save', productForm)">
+          <!-- Mobile-only Image Upload Section -->
+          <div v-if="$q.screen.lt.md" class="column items-center q-mb-md">
+            <div
+              class="relative-position cursor-pointer shadow-1"
+              style="
+                width: 150px;
+                height: 150px;
+                border-radius: 12px;
+                overflow: hidden;
+                border: 2px dashed #ccc;
+              "
+              @click="$refs.mobileFilePicker.pickFiles()"
+            >
+              <q-img
+                v-if="productImagePreview || productForm.productImage"
+                :src="productImagePreview || productForm.productImage"
+                style="width: 100%; height: 100%"
+                fit="cover"
+              />
+              <div v-else class="absolute-full flex flex-center column bg-grey-2 text-grey-7">
+                <q-icon name="add_a_photo" size="40px" />
+                <div class="text-caption q-mt-sm">Add Photo</div>
+              </div>
+              
+              <!-- Hidden File Input for Mobile -->
+              <q-file
+                ref="mobileFilePicker"
+                v-model="productImageFile"
+                accept="image/*"
+                class="hidden"
+                @update:model-value="handleImageSelect"
+              />
+            </div>
+            
+            <q-btn
+              v-if="productImagePreview || productForm.productImage"
+              flat
+              dense
+              color="negative"
+              icon="delete"
+              label="Remove Image"
+              size="sm"
+              class="q-mt-sm"
+              @click.stop="clearImage"
+            />
+          </div>
+
           <q-input
             v-model="productForm.productName"
             label="Product Name"
@@ -57,7 +105,7 @@
             :rules="[(val) => !!val || 'Category is required']"
           />
 
-          <div class="row q-col-gutter-sm items-center">
+          <div class="row q-col-gutter-sm items-center" v-if="!$q.screen.lt.md">
             <div class="col-12">
               <q-file
                 v-model="productImageFile"
@@ -103,7 +151,9 @@
                 />
               </div>
             </div>
+          </div>
 
+          <div class="row q-col-gutter-sm">
             <div class="col-12">
               <div class="text-subtitle2 q-mb-sm text-grey-8">Add-ons</div>
 
@@ -175,6 +225,7 @@
 <script>
 import { ref, reactive, watch } from 'vue'
 import { useQuasar } from 'quasar'
+import { useFormatters } from 'src/composables/useFormatters'
 
 export default {
   name: 'ProductDialog',
@@ -214,6 +265,7 @@ export default {
 
   setup(props, { emit }) {
     const $q = useQuasar()
+    const { formatCurrency } = useFormatters()
     const myForm = ref(null)
     const productImageFile = ref(null)
     const productImagePreview = ref('')
@@ -386,6 +438,7 @@ export default {
       clearImage,
       handleSave,
       handleCancel,
+      formatCurrency,
     }
   },
 }

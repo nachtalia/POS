@@ -15,18 +15,18 @@
         </q-tabs>
       </div>
     </div>
-    <div class="col-12 col-md-4">
+    <div class="col-8 col-md-4">
       <q-input v-model="searchQuery" outlined dense placeholder="Search">
         <template v-slot:prepend><q-icon name="search" /></template>
       </q-input>
     </div>
-    <div class="col-12 col-md-4" v-if="selectedInventoryTab === 'products'">
+    <div class="col-4 col-md-4" v-if="selectedInventoryTab === 'products'">
       <q-select
         v-model="selectedCategory"
         :options="categoryOptions"
         outlined
         dense
-        label="Category"
+        :label="$q.screen.xs ? undefined : 'Category'"
         emit-value
       />
     </div>

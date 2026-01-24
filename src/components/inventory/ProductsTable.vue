@@ -82,3 +82,14 @@ const columns = [
   { name: 'actions', label: 'Actions', field: 'actions', align: 'center' },
 ]
 </script>
+<style scoped>
+/* Sticky Actions Column */
+:deep(.q-table th:last-child),
+:deep(.q-table td:last-child) {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  background-color: #fff; /* Match your table background */
+  box-shadow: -1px 0 2px rgba(0, 0, 0, 0.1); /* subtle shadow separator */
+}
+</style>

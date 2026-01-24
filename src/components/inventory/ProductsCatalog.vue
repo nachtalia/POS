@@ -7,6 +7,15 @@
           class="rounded-borders"
           style="height: 120px"
         >
+          <div
+            class="absolute-bottom-left q-ma-xs rounded-borders"
+            v-if="$q.screen.lt.md"
+            style="background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px); padding: 2px 6px"
+          >
+            <div class="text-weight-bold text-white text-subtitle2">
+              ₱{{ Number(product.productPrice || 0).toFixed(2) }}
+            </div>
+          </div>
           <template v-slot:error>
             <div class="absolute-full flex flex-center bg-grey-3 text-grey">
               <q-icon name="image_not_supported" />
@@ -15,13 +24,14 @@
         </q-img>
         <q-card-section>
           <div class="text-weight-bold text-grey-9">{{ product.productName }}</div>
+          
           <div class="row items-center justify-between q-mt-xs">
             <q-chip dense color="grey-3" text-color="grey-8" v-if="product.productCategory">
               {{ product.productCategory }}
             </q-chip>
-            <div class="text-weight-bold text-primary">
-              ₱{{ Number(product.productPrice || 0).toFixed(2) }}
-            </div>
+            <div class="text-subtitle1 text-weight-bold text-primary q-mt-xs" v-if="$q.screen.gt.sm">
+            ₱{{ Number(product.productPrice || 0).toFixed(2) }}
+          </div>
           </div>
         </q-card-section>
         <q-card-actions align="right">
