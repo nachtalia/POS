@@ -3,29 +3,29 @@
     <POSHeader @close="$router.push('/dashboard/orders')" />
 
     <q-page-container>
-      <q-page class="row no-wrap fit q-pa-md q-col-gutter-md">
-        <div class="col-12 col-md-8 column no-wrap">
-          <ProductBrowser
-            :products="products"
-            :loading="loadingProducts"
-            :img-map="imgMap"
-            @select-product="openCustomizer"
-          />
-        </div>
+      <q-page class="row fit q-pa-md q-col-gutter-md" :class="{ 'no-wrap': $q.screen.gt.sm, 'wrap': !$q.screen.gt.sm }">
+      <div class="col-12 col-md-8 column no-wrap" :style="$q.screen.lt.md ? 'height: 600px' : ''">
+        <ProductBrowser
+          :products="products"
+          :loading="loadingProducts"
+          :img-map="imgMap"
+          @select-product="openCustomizer"
+        />
+      </div>
 
-        <div class="col-12 col-md-4 column no-wrap">
-          <POSCartPanel
-            v-model:customer="customer"
-            :cart="cart"
-            :img-map="imgMap"
-            @update-quantity="updateQuantity"
-            @remove-item="removeItem"
-            @clear-cart="clearCart"
-            @submit-order="submitOrder"
-            @save-draft="saveAsDraft"
-          />
-        </div>
-      </q-page>
+      <div class="col-12 col-md-4 column no-wrap" :style="$q.screen.lt.md ? 'height: 500px' : ''">
+        <POSCartPanel
+          v-model:customer="customer"
+          :cart="cart"
+          :img-map="imgMap"
+          @update-quantity="updateQuantity"
+          @remove-item="removeItem"
+          @clear-cart="clearCart"
+          @submit-order="submitOrder"
+          @save-draft="saveAsDraft"
+        />
+      </div>
+    </q-page>
     </q-page-container>
 
     <ProductCustomizer

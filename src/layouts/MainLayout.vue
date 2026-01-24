@@ -108,7 +108,11 @@ const isSuperAdmin = computed(() => {
 watch(
   () => route.fullPath,
   () => {
-    leftDrawerOpen.value = true
+    if ($q.screen.gt.sm) {
+      leftDrawerOpen.value = true
+    } else {
+      leftDrawerOpen.value = false
+    }
   },
 )
 

@@ -62,12 +62,11 @@
         emit-value
       />
     </div>
-    <div class="col-12" v-if="selectedInventoryTab === 'products'">
+    <div class="col-12 row q-gutter-sm" v-if="selectedInventoryTab === 'products'">
       <q-btn
         color="primary"
         icon="category"
         label="Add Category"
-        class="q-mr-sm"
         @click="$emit('add-category')"
         v-if="canAddCategory"
       />
@@ -82,7 +81,6 @@
         color="secondary"
         icon="download"
         label="Export"
-        class="q-ml-sm"
         @click="$emit('export')"
       />
     </div>

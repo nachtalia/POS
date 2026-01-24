@@ -90,6 +90,7 @@
             class="sticky-header-table"
             v-model:pagination="pagination"
             :rows-per-page-options="[10, 20, 50]"
+            :grid="$q.screen.xs"
           >
             <template v-slot:header="props">
               <q-tr :props="props">

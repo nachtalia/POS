@@ -1,5 +1,13 @@
 <template>
-  <q-table :rows="products" :columns="columns" row-key="id" :loading="loading" flat bordered>
+  <q-table
+    :rows="products"
+    :columns="columns"
+    row-key="id"
+    :loading="loading"
+    flat
+    bordered
+    :grid="$q.screen.xs"
+  >
     <template v-slot:no-data="{ filter }">
       <div class="full-width row flex-center q-gutter-sm q-pa-lg text-grey-8">
         <q-icon size="2em" :name="filter ? 'filter_list_off' : 'inventory_2'" />

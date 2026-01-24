@@ -1,7 +1,12 @@
 <template>
   <q-page class="window-height window-width bg-grey-2">
     <div class="column items-center justify-center full-height">
-      <q-card shadow-10 bordered class="glass-card q-pa-xl" style="max-width: 420px; width: 100%">
+      <q-card
+        shadow-10
+        bordered
+        class="glass-card q-pa-md q-pa-sm-xl"
+        style="max-width: 420px; width: 100%"
+      >
         <div class="column items-center justify-center q-mb-md">
           <q-avatar size="100px" class="bg-white shadow-2 q-mb-md">
             <q-img

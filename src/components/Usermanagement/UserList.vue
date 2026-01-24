@@ -27,6 +27,7 @@
         :pagination="pagination"
         flat
         bordered
+        :grid="$q.screen.xs"
       >
         <template v-slot:body-cell-role="props">
           <q-td :props="props">

@@ -65,6 +65,7 @@
             flat
             class="sticky-header-table"
             :pagination="{ rowsPerPage: 10, sortBy: 'date', descending: true }"
+            :grid="$q.screen.xs"
           >
             <template v-slot:header="props">
               <q-tr :props="props">
