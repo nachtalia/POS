@@ -79,7 +79,7 @@ import { useQuasar } from 'quasar'
 import AddNewUser from 'src/components/Usermanagement/AddNewUser.vue'
 import UserList from 'src/components/Usermanagement/UserList.vue'
 import ManageUserRoles from 'src/components/Usermanagement/ManageUserRole.vue'
-import RoleManager from 'src/components/Usermanagement/RoleManager.vue' // <--- NEW IMPORT
+import RoleManager from 'src/components/Usermanagement/RoleManager.vue'
 
 import { useUserManagementStore } from 'src/stores/usermanagementStore.js'
 import { useAuthStore } from 'src/features/index.js'

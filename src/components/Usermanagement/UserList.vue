@@ -25,6 +25,7 @@
         row-key="username"
         :loading="loading"
         :pagination="pagination"
+        :grid="$q.screen.xs"
         flat
         bordered
       >
@@ -60,7 +61,7 @@
                   v-if="hasMorePermissions(props.row)"
                   color="primary"
                   class="q-px-sm q-py-xs q-mr-xs q-mb-xs cursor-pointer"
-                  @click="togglePermissions(props.row)"
+                  @click.stop="togglePermissions(props.row)"
                 >
                   +{{ getMoreCount(props.row) }} more
                 </q-badge>
@@ -81,7 +82,7 @@
                   color="primary"
                   outline
                   class="q-px-sm q-py-xs q-mr-xs q-mb-xs cursor-pointer"
-                  @click="togglePermissions(props.row)"
+                  @click.stop="togglePermissions(props.row)"
                 >
                   Show less
                 </q-badge>
@@ -122,6 +123,98 @@
             </div>
           </q-td>
         </template>
+
+        <template v-slot:item="props">
+          <div class="q-pa-xs col-xs-12 col-sm-6 col-md-4">
+            <q-card flat bordered class="q-mb-sm">
+              <q-card-section class="row justify-between items-center q-pb-none">
+                <div class="text-subtitle1 text-weight-bold">{{ props.row.username }}</div>
+                <q-chip
+                  dense
+                  :color="getRoleColor(props.row.role)"
+                  text-color="white"
+                  size="sm"
+                  class="text-weight-bold"
+                >
+                  {{ getRoleLabel(props.row.role) }}
+                </q-chip>
+              </q-card-section>
+
+              <q-card-section>
+                <div class="text-caption text-grey-7 q-mb-xs">Permissions:</div>
+                <div class="permissions-container-mobile">
+                  <div v-if="!props.row.showAllPermissions" class="permissions-limited">
+                    <q-badge
+                      v-for="permission in getLimitedPermissions(props.row)"
+                      :key="permission"
+                      color="grey-3"
+                      text-color="grey-9"
+                      class="q-px-sm q-py-xs q-mr-xs q-mb-xs border-grey"
+                    >
+                      {{ permission }}
+                    </q-badge>
+                    <q-badge
+                      v-if="hasMorePermissions(props.row)"
+                      color="primary"
+                      class="q-px-sm q-py-xs q-mr-xs q-mb-xs cursor-pointer"
+                      @click="togglePermissions(props.row)"
+                    >
+                      +{{ getMoreCount(props.row) }} more
+                    </q-badge>
+                  </div>
+                  <div v-else class="permissions-full">
+                    <q-badge
+                      v-for="permission in getAllPermissions(props.row)"
+                      :key="permission"
+                      color="grey-3"
+                      text-color="grey-9"
+                      class="q-px-sm q-py-xs q-mr-xs q-mb-xs border-grey"
+                    >
+                      {{ permission }}
+                    </q-badge>
+                    <q-badge
+                      color="primary"
+                      outline
+                      class="q-px-sm q-py-xs q-mr-xs q-mb-xs cursor-pointer"
+                      @click="togglePermissions(props.row)"
+                    >
+                      Show less
+                    </q-badge>
+                  </div>
+                </div>
+              </q-card-section>
+
+              <q-separator />
+
+              <q-card-actions align="right" class="row items-center">
+                <div class="text-caption text-grey q-mr-auto q-pl-sm">
+                  Created: {{ props.row.formattedCreatedAt || 'N/A' }}
+                </div>
+
+                <q-btn
+                  icon="settings"
+                  size="sm"
+                  color="green"
+                  dense
+                  flat
+                  round
+                  @click="$emit('manage-roles', props.row)"
+                  v-if="canManageRoles"
+                />
+                <q-btn
+                  icon="delete"
+                  size="sm"
+                  color="negative"
+                  dense
+                  flat
+                  round
+                  @click="$emit('delete', props.row)"
+                  v-if="canDeleteUser"
+                />
+              </q-card-actions>
+            </q-card>
+          </div>
+        </template>
       </q-table>
     </q-card-section>
   </q-card>
@@ -129,6 +222,9 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useQuasar } from 'quasar' // 1. Import useQuasar
+
+const $q = useQuasar() // 2. Initialize
 
 const props = defineProps({
   users: { type: Array, default: () => [] },
@@ -208,12 +304,8 @@ const formattedUsers = computed(() => {
 // --- ROLE DISPLAY LOGIC ---
 const getRoleLabel = (roleValue) => {
   if (!roleValue) return 'No Role'
-
-  // 1. Try to find the exact label from props (e.g., 'cashier' -> 'Cashier')
   const found = props.availableRoles.find((r) => r.value === roleValue)
   if (found) return found.label
-
-  // 2. Fallback: Capitalize whatever string is there (allows Custom or anything else)
   return roleValue
     .split('_')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -223,7 +315,6 @@ const getRoleLabel = (roleValue) => {
 const getRoleColor = (roleValue) => {
   if (!roleValue) return 'grey'
   const r = roleValue.toLowerCase()
-  // Assign colors based on role names, not permissions
   if (r === 'admin') return 'negative'
   if (r.includes('manager')) return 'deep-orange'
   if (r === 'cashier') return 'blue'
@@ -274,6 +365,9 @@ const togglePermissions = (row) => {
 <style scoped>
 .permissions-container {
   min-height: 40px;
+}
+.permissions-container-mobile {
+  min-height: auto;
 }
 .permissions-limited,
 .permissions-full {

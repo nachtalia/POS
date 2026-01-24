@@ -1,17 +1,36 @@
 <template>
-  <q-card class="column full-height" style="min-height: 600px">
-    <q-card-section class="bg-primary text-white row items-center justify-between">
+  <q-card class="column full-height overflow-hidden" style="min-height: 600px">
+    <q-card-section class="bg-primary text-white row items-center justify-between q-py-sm">
       <div class="text-h6">Role Management</div>
       <q-btn flat round dense icon="close" v-close-popup />
     </q-card-section>
 
-    <q-card-section class="col q-pa-md">
-      <div class="row justify-between q-mb-md">
-        <div class="text-subtitle1 text-grey-8">Configure access levels for your system</div>
-        <q-btn color="secondary" icon="add" label="Create New Role" @click="openDialog()" />
+    <q-card-section class="col q-pa-md scroll">
+      <div class="row justify-between items-center q-mb-md q-col-gutter-y-sm">
+        <div class="col-12 col-sm-auto">
+          <div class="text-subtitle1 text-grey-8">Configure access levels</div>
+        </div>
+        <div class="col-12 col-sm-auto text-right">
+          <q-btn
+            color="secondary"
+            icon="add"
+            label="Create New Role"
+            @click="openDialog()"
+            class="full-width q-px-sm"
+          />
+        </div>
       </div>
 
-      <q-table :rows="roles" :columns="columns" row-key="id" flat bordered :loading="loading">
+      <q-table
+        :rows="roles"
+        :columns="columns"
+        row-key="id"
+        flat
+        bordered
+        :loading="loading"
+        :grid="$q.screen.xs"
+        :rows-per-page-options="[10, 20, 0]"
+      >
         <template v-slot:body-cell-permissions="props">
           <q-td :props="props">
             <q-badge color="blue-grey" outline>
@@ -38,12 +57,74 @@
             </q-btn>
           </q-td>
         </template>
+
+        <template v-slot:item="props">
+          <div class="q-pa-xs col-xs-12 col-sm-6 col-md-4">
+            <q-card flat bordered class="q-mb-sm shadow-1">
+              <q-card-section class="row justify-between items-center bg-grey-1 q-py-sm">
+                <div class="text-subtitle1 text-weight-bold">{{ props.row.label }}</div>
+                <q-chip
+                  dense
+                  square
+                  color="blue-grey-1"
+                  text-color="blue-grey-8"
+                  class="text-caption"
+                >
+                  {{ props.row.value }}
+                </q-chip>
+              </q-card-section>
+
+              <q-separator />
+
+              <q-card-section class="q-py-md">
+                <div class="row items-center no-wrap">
+                  <q-icon name="vpn_key" color="grey-7" class="q-mr-sm" size="xs" />
+                  <div class="text-body2 text-grey-8">
+                    <span class="text-weight-bold">{{ props.row.permissions?.length || 0 }}</span>
+                    permissions assigned
+                  </div>
+                </div>
+              </q-card-section>
+
+              <q-separator />
+
+              <q-card-actions align="right">
+                <q-btn
+                  flat
+                  color="primary"
+                  icon="edit"
+                  label="Edit"
+                  size="sm"
+                  @click="openDialog(props.row)"
+                />
+                <q-btn
+                  flat
+                  color="negative"
+                  icon="delete"
+                  label="Delete"
+                  size="sm"
+                  @click="confirmDelete(props.row)"
+                  :disable="['admin'].includes(props.row.value)"
+                />
+              </q-card-actions>
+            </q-card>
+          </div>
+        </template>
       </q-table>
     </q-card-section>
 
-    <q-dialog v-model="dialogVisible" persistent position="right" full-height>
-      <q-card class="column" style="width: 500px; max-width: 100vw; height: 100vh">
-        <q-card-section class="row items-center justify-between bg-primary text-white q-py-md">
+    <q-dialog
+      v-model="dialogVisible"
+      persistent
+      position="right"
+      maximized
+      transition-show="slide-left"
+      transition-hide="slide-right"
+    >
+      <q-card class="column" style="width: 500px; max-width: 100vw">
+        <q-card-section
+          class="row items-center justify-between bg-primary text-white q-py-md shrink"
+        >
           <div class="text-h6">{{ isEditing ? 'Edit Role' : 'Create New Role' }}</div>
           <q-btn flat round dense icon="close" color="white" v-close-popup size="sm" />
         </q-card-section>
@@ -68,11 +149,10 @@
               <q-input
                 outlined
                 v-model="form.value"
-                label="Role ID (System Identifier)"
+                label="Role ID"
                 dense
                 :readonly="isEditing"
                 :disable="isEditing"
-                hint="Unique ID (e.g. senior_cashier)"
                 :rules="[
                   (val) => !!val || 'Required',
                   (val) => /^[a-z_]+$/.test(val) || 'Lowercase letters and underscores only',
@@ -151,7 +231,6 @@
                   </q-item-section>
                   <q-item-section>
                     <q-item-label class="text-weight-medium">{{ action.label }}</q-item-label>
-                    <q-item-label caption>{{ action.value }}</q-item-label>
                   </q-item-section>
                 </q-item>
               </q-expansion-item>
@@ -161,10 +240,10 @@
 
         <q-separator />
 
-        <q-card-actions align="right" class="q-pa-md bg-grey-1">
+        <q-card-actions align="right" class="q-pa-md bg-grey-1 shrink">
           <q-btn flat label="Cancel" color="grey" v-close-popup class="q-px-lg" />
           <q-btn
-            :label="isEditing ? 'Update Role' : 'Create Role'"
+            :label="isEditing ? 'Update' : 'Create'"
             color="green-7"
             @click="saveRole"
             :loading="saving"
@@ -185,7 +264,6 @@ import { useUserManagementStore } from 'src/stores/usermanagementStore.js'
 const $q = useQuasar()
 const userStore = useUserManagementStore()
 
-// --- State ---
 const dialogVisible = ref(false)
 const saving = ref(false)
 const isEditing = ref(false)
@@ -207,7 +285,6 @@ const columns = [
   { name: 'actions', label: 'Actions', field: 'actions', align: 'right' },
 ]
 
-// --- Permissions Definitions (Matches AddNewUser.vue) ---
 const actionsByPage = {
   Dashboard: [{ label: 'View Dashboard', value: 'dashboard:view' }],
   Products: [
@@ -237,17 +314,12 @@ const actionsByPage = {
   ],
 }
 
-// --- Lifecycle ---
 onMounted(() => {
   userStore.fetchRoles()
 })
 
-// --- Methods ---
-
-// Helper: Auto-generate ID from Name
 const autoFillValue = (val) => {
   if (!isEditing.value && val) {
-    // Convert "Senior Cashier" -> "senior_cashier"
     form.value.value = val
       .toLowerCase()
       .replace(/\s+/g, '_')
