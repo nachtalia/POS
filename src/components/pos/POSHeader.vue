@@ -31,22 +31,59 @@
             <span class="text-weight-bold text-caption">{{ userName }}</span>
           </div>
         </div>
+
+        <div class="row items-center bg-grey-2 rounded-capsule q-py-xs">
+          <!-- <q-btn
+            round
+            color="secondary"
+            icon="shopping_cart"
+            @click="$emit('showCart')"
+          >
+            <q-badge color="primary" floating>{{ cart.length }}</q-badge>
+          </q-btn> -->
+
+          <q-btn
+            round
+            :color="isConnected ? 'positive' : 'primary'"
+            icon="settings_bluetooth"
+            class="q-mr-sm"
+            @click="initPrinter"
+          />
+          <q-btn
+            round
+            color="negative"
+            icon="exit_to_app"
+            @click="onLogout"
+          />
+        </div>
       </div>
     </q-toolbar>
   </q-header>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import PrintHub from "printhub";
+import { useQuasar } from 'quasar'
+import { ref, computed } from 'vue'
 import { date } from 'quasar'
 import { useRouter } from 'vue-router' // Import the router
+import { signOut } from 'firebase/auth'
+import { auth } from 'src/services/firebase'
+import { useAuthStore } from 'src/features/index.js'
+const authStore = useAuthStore()
 
 const props = defineProps({
   user: {
     type: Object,
     default: () => ({ displayName: 'Guest', role: 'Cashier' }),
   },
+  cart: {
+    type: Array,
+    default: () => [],
+  },
 })
+
+const $q = useQuasar()
 
 const router = useRouter() // Initialize the router
 
@@ -60,6 +97,45 @@ const timeString = computed(() => date.formatDate(Date.now(), 'hh:mm A'))
 const userName = computed(() => props.user?.displayName || props.user?.email || 'Unknown')
 const userRole = computed(() => props.user?.role || 'Cashier')
 const userInitial = computed(() => (userName.value ? userName.value.charAt(0).toUpperCase() : '?'))
+const emit = defineEmits(['printerSetup']);
+
+const isConnected = ref(false);
+let printer = null;
+
+// Initialize the PrintHub instance (58mm is standard for mobile BT printers)
+const initPrinter = () => {
+  printer = new PrintHub({ paperSize: '58' });
+
+  // This opens the browser's Bluetooth device picker
+  printer.connectToPrint({
+    onReady: () => {
+      isConnected.value = true;
+      emit('printerSetup', {
+        connected: true,
+        printerInstance: printer
+      });
+    },
+    onFailed: (error) => {
+      isConnected.value = false;
+      console.error('Connection failed:', error);
+    }
+  });
+};
+
+const onLogout = async () => {
+  $q.loading.show({ message: 'Signing out...' })
+  try {
+    await signOut(auth)
+    authStore.$reset()
+    router.replace('/')
+  } catch (error) {
+    console.error('Logout Error:', error)
+    $q.notify({ color: 'negative', message: 'Failed to sign out', icon: 'warning' })
+  } finally {
+    $q.loading.hide()
+  }
+}
+
 </script>
 
 <style scoped>

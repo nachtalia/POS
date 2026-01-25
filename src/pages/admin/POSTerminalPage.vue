@@ -1,6 +1,6 @@
 <template>
   <q-layout view="hHh lpR fFf" class="bg-grey-1 font-inter">
-    <POSHeader @close="$router.push('/dashboard/orders')" />
+    <POSHeader @close="$router.push('/dashboard/orders')" :cart="cart" @showCart="showMobileCart = true" @printerSetup="setPrinterReady" />
 
     <q-page-container>
       <q-page class="row fit q-pa-md q-col-gutter-md" :class="{ 'no-wrap': $q.screen.gt.sm, 'wrap': !$q.screen.gt.sm }">
@@ -16,6 +16,7 @@
 
         <!-- CART PANEL (Desktop: Side Panel, Mobile: Hidden/Dialog) -->
         <div v-if="$q.screen.gt.sm" class="col-12 col-md-4 column no-wrap">
+
           <POSCartPanel
             v-model:customer="customer"
             :cart="cart"
@@ -31,8 +32,8 @@
     </q-page-container>
 
     <!-- MOBILE CART DIALOG -->
-    <q-dialog v-model="showMobileCart" position="bottom" maximized>
-      <q-card class="column full-height">
+    <q-dialog v-model="showMobileCart" persistent position="right" >
+      <q-card style="width: 100dvw" class="column full-height">
         <q-card-section class="row items-center justify-between bg-primary text-white q-py-sm">
           <div class="text-h6">Current Order</div>
           <q-btn flat round dense icon="close" v-close-popup />
@@ -55,7 +56,7 @@
     </q-dialog>
 
     <!-- MOBILE CART FAB (Floating Action Button) -->
-    <q-page-sticky position="bottom-right" :offset="[18, 18]" v-if="$q.screen.lt.md">
+    <!-- <q-page-sticky position="bottom-right" :offset="[18, 18]" v-if="$q.screen.lt.md">
       <q-btn
         fab
         icon="shopping_cart"
@@ -64,7 +65,7 @@
       >
         <q-badge color="red" floating v-if="cart.length > 0">{{ cartTotalItems }}</q-badge>
       </q-btn>
-    </q-page-sticky>
+    </q-page-sticky> -->
 
     <ProductCustomizer
       v-model="showCustomizer"
@@ -76,15 +77,23 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
+// import { CapacitorThermalPrinter } from '@aybinv7/capacitor-thermal-printer';
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
+import { storeToRefs } from 'pinia'
 import { db } from 'src/services/firebase'
 import { collection, onSnapshot, query, serverTimestamp } from 'firebase/firestore'
 import { getStorage, ref as storageRef, getDownloadURL } from 'firebase/storage'
 import { useAddonStore } from 'src/stores/addonStore'
 import { useOrderStore } from 'src/stores/orderStore'
 import { logAudit } from 'src/services/auditService'
+import moment from 'moment'
+
+// System Store
+import { useSystemSettingsStore } from 'src/stores/systemSettingsStore'
+const systemSettingsStore = useSystemSettingsStore()
+const { settings } = storeToRefs(systemSettingsStore)
 
 // Components
 import POSHeader from 'src/components/pos/POSHeader.vue'
@@ -111,9 +120,9 @@ const showMobileCart = ref(false)
 const activeProduct = ref(null)
 // Removed showReceipt and receiptOrder state variables
 
-const cartTotalItems = computed(() => {
-  return cart.value.reduce((total, item) => total + item.quantity, 0)
-})
+// const cartTotalItems = computed(() => {
+//   return cart.value.reduce((total, item) => total + item.quantity, 0)
+// })
 
 const PLACEHOLDER_IMG =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
@@ -202,7 +211,9 @@ const submitOrder = async (summaryData) => {
   }
 
   try {
+
     const finalOrder = await orderStore.addOrder(orderData)
+    handlePrint(finalOrder)
     await logAudit({
       module: 'ordering',
       action: 'add',
@@ -218,6 +229,59 @@ const submitOrder = async (summaryData) => {
     $q.notify({ type: 'negative', message: err.message })
   }
 }
+
+const isConnected = ref(false);
+let printer = null;
+
+const setPrinterReady = (ready) => {
+  isConnected.value = ready.connected;
+  printer = ready.printerInstance;
+};
+
+const handlePrint = async (orderData) => {
+  if (!printer) return;
+
+  // This sends data directly to the hardware without a print preview dialog
+  printer.connectToPrint({
+    onReady: async (print) => {
+      await print.writeText(`${settings?.storeName || 'My POS Default'}`, { align: "center", bold: true, size: "double" });
+      await print.writeText(`Space for Address`, { align: "center" });
+      await print.writeText(`000-000-000-0000`, { align: "center" });
+      await print.writeText(`09876543221`, { align: "center" });
+      await print.writeTextWith2Column("Date", moment().format('MM/DD/YYYY hh:mm A'));
+      await print.writeTextWith2Column("Order #", orderData.orderNumber || "N/A");
+      await print.writeDashLine();
+
+      await print.writeTextWith2Column("Payment", orderData.paymentMethod || "N/A");
+      await print.writeLineBreak();
+      await print.writeTextWith2Column("TRANS TYPE", `Sales`);
+
+      for (const item of orderData.items) {
+        const itemName = `${item.name} x${item.quantity}`;
+        const itemPrice = `${(item.unitPrice * item.quantity).toFixed(2)}`;
+        await print.writeTextWith2Column(itemName, itemPrice, { size: "small" });
+        if (item.addons && item.addons.length > 0) {
+          for (const addon of item.addons) {
+            const addonName = `  + ${addon.name}`;
+            const addonPrice = `${(addon.price).toFixed(2)}`;
+            await print.writeTextWith2Column(addonName, addonPrice, { size: "small" });
+          }
+        }
+      }
+      await print.writeLineBreak();
+      await print.writeTextWith2Column("Sub-Total", `${(orderData.subtotal).toFixed(2)}`);
+      await print.writeTextWith2Column("VAT", `${(orderData.taxAmount).toFixed(2)}`);
+      await print.writeTextWith2Column("Discount", `${(orderData.discountAmount).toFixed(2)}`);
+      await print.writeTextWith2Column("Total", `${(orderData.totalAmount).toFixed(2)}`);
+
+      await print.writeDashLine();
+      await print.writeText("Thank you!", { align: "center" });
+
+      // Feed paper so it can be torn easily
+      await print.writeLineBreak({ count: 3 });
+    }
+  });
+};
 
 // --- DATA LOADING ---
 onMounted(() => {
