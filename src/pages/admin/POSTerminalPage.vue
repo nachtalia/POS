@@ -1,11 +1,21 @@
 <template>
   <q-layout view="hHh lpR fFf" class="bg-grey-1 font-inter">
-    <POSHeader @close="$router.push('/dashboard/orders')" :cart="cart" @showCart="showMobileCart = true" @printerSetup="setPrinterReady" />
+    <POSHeader
+      @close="$router.push('/dashboard/orders')"
+      :cart="cart"
+      @showCart="showMobileCart = true"
+      @printerSetup="setPrinterReady"
+    />
 
     <q-page-container>
-      <q-page class="row fit q-pa-md q-col-gutter-md" :class="{ 'no-wrap': $q.screen.gt.sm, 'wrap': !$q.screen.gt.sm }">
-        <!-- PRODUCT BROWSER (Always visible, full width on mobile) -->
-        <div class="col-12 col-md-8 column no-wrap" :style="$q.screen.lt.md ? 'height: calc(100vh - 150px)' : ''">
+      <q-page
+        class="row fit q-pa-md q-col-gutter-md"
+        :class="{ 'no-wrap': $q.screen.gt.sm, wrap: !$q.screen.gt.sm }"
+      >
+        <div
+          class="col-12 col-md-8 column no-wrap"
+          :style="$q.screen.lt.md ? 'height: calc(100vh - 80px)' : ''"
+        >
           <ProductBrowser
             :products="products"
             :loading="loadingProducts"
@@ -14,9 +24,7 @@
           />
         </div>
 
-        <!-- CART PANEL (Desktop: Side Panel, Mobile: Hidden/Dialog) -->
         <div v-if="$q.screen.gt.sm" class="col-12 col-md-4 column no-wrap">
-
           <POSCartPanel
             v-model:customer="customer"
             :cart="cart"
@@ -31,15 +39,34 @@
       </q-page>
     </q-page-container>
 
-    <!-- MOBILE CART DIALOG -->
-    <q-dialog v-model="showMobileCart" persistent position="right" >
-      <q-card style="width: 100dvw" class="column full-height">
-        <q-card-section class="row items-center justify-between bg-primary text-white q-py-sm">
-          <div class="text-h6">Current Order</div>
-          <q-btn flat round dense icon="close" v-close-popup />
+    <q-page-sticky position="bottom-right" :offset="[18, 18]" v-if="$q.screen.lt.md">
+      <q-btn
+        fab
+        icon="shopping_cart"
+        color="primary"
+        class="shadow-4"
+        @click="showMobileCart = true"
+      >
+        <q-badge v-if="cartTotalItems > 0" color="red" floating rounded :label="cartTotalItems" />
+      </q-btn>
+    </q-page-sticky>
+
+    <q-dialog
+      v-model="showMobileCart"
+      persistent
+      maximized
+      transition-show="slide-up"
+      transition-hide="slide-down"
+    >
+      <q-card class="column full-height bg-grey-1">
+        <q-card-section
+          class="row items-center justify-between bg-white text-primary shadow-1 z-top"
+        >
+          <div class="text-h6 text-weight-bold">Current Order</div>
+          <q-btn flat round dense icon="close" v-close-popup color="grey-7" />
         </q-card-section>
 
-        <q-card-section class="col q-pa-none">
+        <q-card-section class="col q-pa-none scroll">
           <POSCartPanel
             v-model:customer="customer"
             :cart="cart"
@@ -55,18 +82,6 @@
       </q-card>
     </q-dialog>
 
-    <!-- MOBILE CART FAB (Floating Action Button) -->
-    <!-- <q-page-sticky position="bottom-right" :offset="[18, 18]" v-if="$q.screen.lt.md">
-      <q-btn
-        fab
-        icon="shopping_cart"
-        color="primary"
-        @click="showMobileCart = true"
-      >
-        <q-badge color="red" floating v-if="cart.length > 0">{{ cartTotalItems }}</q-badge>
-      </q-btn>
-    </q-page-sticky> -->
-
     <ProductCustomizer
       v-model="showCustomizer"
       :product="activeProduct"
@@ -77,35 +92,36 @@
 </template>
 
 <script setup>
-// import { CapacitorThermalPrinter } from '@aybinv7/capacitor-thermal-printer';
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { db } from 'src/services/firebase'
 import { collection, onSnapshot, query, serverTimestamp } from 'firebase/firestore'
 import { getStorage, ref as storageRef, getDownloadURL } from 'firebase/storage'
-import { useAddonStore } from 'src/stores/addonStore'
-import { useOrderStore } from 'src/stores/orderStore'
-import { logAudit } from 'src/services/auditService'
 import moment from 'moment'
 
-// System Store
+// Stores
+import { useAddonStore } from 'src/stores/addonStore'
+import { useOrderStore } from 'src/stores/orderStore'
 import { useSystemSettingsStore } from 'src/stores/systemSettingsStore'
-const systemSettingsStore = useSystemSettingsStore()
-const { settings } = storeToRefs(systemSettingsStore)
+
+// Services
+import { logAudit } from 'src/services/auditService'
 
 // Components
 import POSHeader from 'src/components/pos/POSHeader.vue'
 import ProductBrowser from 'src/components/pos/ProductBrowser.vue'
 import POSCartPanel from 'src/components/pos/POSCartPanel.vue'
 import ProductCustomizer from 'src/components/pos/ProductCustomizer.vue'
-// Removed ReceiptDialog import
 
+// --- SETUP ---
 const $q = useQuasar()
 useRouter()
 const addonStore = useAddonStore()
 const orderStore = useOrderStore()
+const systemSettingsStore = useSystemSettingsStore()
+const { settings } = storeToRefs(systemSettingsStore)
 
 // --- STATE ---
 const cart = ref([])
@@ -118,16 +134,16 @@ let unsubscribeProducts = null
 const showCustomizer = ref(false)
 const showMobileCart = ref(false)
 const activeProduct = ref(null)
-// Removed showReceipt and receiptOrder state variables
-
-// const cartTotalItems = computed(() => {
-//   return cart.value.reduce((total, item) => total + item.quantity, 0)
-// })
 
 const PLACEHOLDER_IMG =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
 
-// --- IMAGE LOGIC ---
+// --- COMPUTED ---
+const cartTotalItems = computed(() => {
+  return cart.value.reduce((total, item) => total + item.quantity, 0)
+})
+
+// --- IMAGE HANDLING ---
 const resolveImages = async () => {
   const storage = getStorage()
   for (const product of products.value) {
@@ -161,11 +177,11 @@ const openCustomizer = (product) => {
 const handleAddToCart = (cartItem) => {
   cart.value.push(cartItem)
   $q.notify({
-    message: `${cartItem.product.productName} added`,
+    message: `${cartItem.product.productName || cartItem.product.name} added`,
     color: 'positive',
     icon: 'check',
-    position: 'top-right',
-    timeout: 1000,
+    position: 'top',
+    timeout: 800,
   })
   showCustomizer.value = false
 }
@@ -177,18 +193,35 @@ const updateQuantity = ({ index, delta }) => {
 }
 
 const removeItem = (index) => {
-  $q.dialog({ title: 'Remove', message: 'Remove item?', cancel: true }).onOk(() => {
+  $q.dialog({
+    title: 'Remove Item',
+    message: 'Are you sure you want to remove this item?',
+    cancel: true,
+    persistent: true,
+  }).onOk(() => {
     cart.value.splice(index, 1)
   })
 }
 
 const clearCart = () => {
-  $q.dialog({ title: 'Clear Cart', message: 'Clear all?', cancel: true }).onOk(() => {
+  $q.dialog({
+    title: 'Clear Cart',
+    message: 'Clear all items?',
+    cancel: true,
+    persistent: true,
+  }).onOk(() => {
     cart.value = []
     customer.value = { name: '', email: '', phone: '' }
+    showMobileCart.value = false // Close mobile modal on clear
   })
 }
 
+const saveAsDraft = () => {
+  // Implementation for saving draft (if needed later)
+  $q.notify({ message: 'Draft saved (Feature placeholder)', color: 'orange-8', icon: 'save' })
+}
+
+// --- ORDER SUBMISSION ---
 const submitOrder = async (summaryData) => {
   const orderData = {
     customer: customer.value,
@@ -211,9 +244,12 @@ const submitOrder = async (summaryData) => {
   }
 
   try {
-
     const finalOrder = await orderStore.addOrder(orderData)
+
+    // Attempt Print
     handlePrint(finalOrder)
+
+    // Audit Log
     await logAudit({
       module: 'ordering',
       action: 'add',
@@ -222,70 +258,79 @@ const submitOrder = async (summaryData) => {
       details: { orderNumber: finalOrder.orderNumber, total: finalOrder.totalAmount },
     })
 
-    // Success logic: Clear cart, Reset customer, Notify user
+    // Success & Reset
+    $q.notify({ type: 'positive', message: 'Order submitted successfully!' })
     cart.value = []
     customer.value = { name: '', email: '', phone: '' }
+    showMobileCart.value = false
   } catch (err) {
-    $q.notify({ type: 'negative', message: err.message })
+    console.error(err)
+    $q.notify({ type: 'negative', message: 'Failed to submit order: ' + err.message })
   }
 }
 
-const isConnected = ref(false);
-let printer = null;
+// --- PRINTER LOGIC ---
+let printer = null
 
 const setPrinterReady = (ready) => {
-  isConnected.value = ready.connected;
-  printer = ready.printerInstance;
-};
+  printer = ready.printerInstance
+}
 
 const handlePrint = async (orderData) => {
-  if (!printer) return;
+  if (!printer) {
+    // Optional: Notify if printer not connected, or just silent fail
+    // $q.notify({ message: 'Printer not connected', color: 'warning' })
+    return
+  }
 
-  // This sends data directly to the hardware without a print preview dialog
   printer.connectToPrint({
     onReady: async (print) => {
-      await print.writeText(`${settings?.storeName || 'My POS Default'}`, { align: "center", bold: true, size: "double" });
-      await print.writeText(`Space for Address`, { align: "center" });
-      await print.writeText(`000-000-000-0000`, { align: "center" });
-      await print.writeText(`09876543221`, { align: "center" });
-      await print.writeTextWith2Column("Date", moment().format('MM/DD/YYYY hh:mm A'));
-      await print.writeTextWith2Column("Order #", orderData.orderNumber || "N/A");
-      await print.writeDashLine();
+      await print.writeText(`${settings?.value?.storeName || 'My POS Store'}`, {
+        align: 'center',
+        bold: true,
+        size: 'double',
+      })
+      await print.writeText(`Official Receipt`, { align: 'center' })
+      await print.writeTextWith2Column('Date', moment().format('MM/DD/YYYY hh:mm A'))
+      await print.writeTextWith2Column('Order #', orderData.orderNumber || 'N/A')
+      await print.writeDashLine()
 
-      await print.writeTextWith2Column("Payment", orderData.paymentMethod || "N/A");
-      await print.writeLineBreak();
-      await print.writeTextWith2Column("TRANS TYPE", `Sales`);
+      await print.writeTextWith2Column('Payment', orderData.paymentMethod || 'Cash')
 
       for (const item of orderData.items) {
-        const itemName = `${item.name} x${item.quantity}`;
-        const itemPrice = `${(item.unitPrice * item.quantity).toFixed(2)}`;
-        await print.writeTextWith2Column(itemName, itemPrice, { size: "small" });
+        const itemName = `${item.name} x${item.quantity}`
+        const itemPrice = `${(item.unitPrice * item.quantity).toFixed(2)}`
+        await print.writeTextWith2Column(itemName, itemPrice, { size: 'small' })
+
         if (item.addons && item.addons.length > 0) {
           for (const addon of item.addons) {
-            const addonName = `  + ${addon.name}`;
-            const addonPrice = `${(addon.price).toFixed(2)}`;
-            await print.writeTextWith2Column(addonName, addonPrice, { size: "small" });
+            await print.writeTextWith2Column(`  + ${addon.name}`, `${addon.price.toFixed(2)}`, {
+              size: 'small',
+            })
           }
         }
       }
-      await print.writeLineBreak();
-      await print.writeTextWith2Column("Sub-Total", `${(orderData.subtotal).toFixed(2)}`);
-      await print.writeTextWith2Column("VAT", `${(orderData.taxAmount).toFixed(2)}`);
-      await print.writeTextWith2Column("Discount", `${(orderData.discountAmount).toFixed(2)}`);
-      await print.writeTextWith2Column("Total", `${(orderData.totalAmount).toFixed(2)}`);
 
-      await print.writeDashLine();
-      await print.writeText("Thank you!", { align: "center" });
+      await print.writeLineBreak()
+      await print.writeTextWith2Column('Sub-Total', `${orderData.subtotal.toFixed(2)}`)
+      if (orderData.discountAmount > 0) {
+        await print.writeTextWith2Column('Discount', `-${orderData.discountAmount.toFixed(2)}`)
+      }
+      await print.writeTextWith2Column('Total', `${orderData.totalAmount.toFixed(2)}`, {
+        bold: true,
+      })
 
-      // Feed paper so it can be torn easily
-      await print.writeLineBreak({ count: 3 });
-    }
-  });
-};
+      await print.writeDashLine()
+      await print.writeText('Thank you for your purchase!', { align: 'center' })
+      await print.writeLineBreak({ count: 3 })
+    },
+  })
+}
 
-// --- DATA LOADING ---
+// --- LIFECYCLE ---
 onMounted(() => {
   if (!addonStore.addons.length) addonStore.fetchAddons()
+
   unsubscribeProducts = onSnapshot(query(collection(db, 'products')), (snap) => {
     products.value = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
     loadingProducts.value = false
@@ -300,5 +345,8 @@ onUnmounted(() => {
 <style scoped>
 .font-inter {
   font-family: 'Inter', sans-serif;
+}
+.z-top {
+  z-index: 2000; /* Higher than Quasar defaults to ensure visibility */
 }
 </style>

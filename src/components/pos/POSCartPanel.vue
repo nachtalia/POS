@@ -1,13 +1,19 @@
 <template>
-  <div class="bg-white rounded-borders shadow-2 column fit overflow-hidden">
-    <div class="row items-center justify-between q-px-md q-py-sm border-bottom bg-white z-top">
+  <div
+    class="bg-white column fit overflow-hidden"
+    :class="{ 'rounded-borders shadow-2': $q.screen.gt.xs }"
+  >
+    <div
+      class="row items-center justify-between q-px-md q-py-sm border-bottom bg-white relative-position"
+      style="z-index: 10"
+    >
       <div class="row items-center">
         <div class="text-subtitle2 text-weight-bold row items-center">
           <q-icon
             :name="isCheckout ? 'payments' : 'shopping_bag'"
             color="primary"
             class="q-mr-sm"
-            size="18px"
+            size="20px"
           />
           {{ isCheckout ? 'Payment Summary' : 'Current Order' }}
         </div>
@@ -15,14 +21,15 @@
           {{ totalItems }}
         </q-badge>
       </div>
+
       <q-btn
-        v-if="isCheckout"
+        v-if="isCheckout || $q.screen.lt.sm"
         flat
         round
         dense
         icon="close"
         color="grey-7"
-        @click="isCheckout = false"
+        @click="isCheckout ? (isCheckout = false) : $emit('close-drawer')"
         :disable="isProcessing"
       />
     </div>
@@ -35,8 +42,12 @@
         label="Customer Name"
         bg-color="white"
         class="q-mb-sm"
-      />
-      <q-input v-model="localCustomer.address" dense outlined label="Address" bg-color="white" />
+      >
+        <template v-slot:prepend><q-icon name="person" color="grey-5" /></template>
+      </q-input>
+      <q-input v-model="localCustomer.address" dense outlined label="Address" bg-color="white">
+        <template v-slot:prepend><q-icon name="place" color="grey-5" /></template>
+      </q-input>
     </div>
 
     <q-scroll-area class="col bg-white">
@@ -45,44 +56,46 @@
           <q-item-section avatar>
             <q-img
               :src="imgMap[item.product.id] || PLACEHOLDER_IMG"
-              style="width: 50px; height: 50px; border-radius: 8px"
+              style="width: 56px; height: 56px; border-radius: 8px"
               fit="cover"
             />
           </q-item-section>
 
           <q-item-section>
-            <div class="row justify-between">
-              <div class="text-subtitle2 text-weight-bold">{{ item.product.productName }}</div>
-              <div class="text-subtitle2 text-primary">
+            <div class="row justify-between items-start">
+              <div class="text-subtitle2 text-weight-bold col-8 ellipsis">
+                {{ item.product.productName }}
+              </div>
+              <div class="text-subtitle2 text-primary col-4 text-right">
                 ₱{{ (item.unitPrice * item.quantity).toFixed(2) }}
               </div>
             </div>
-            <div class="text-caption text-grey-7">
-              {{ item.quantity }}x {{ item.selectedSize?.label || 'Standard' }}
+            <div class="text-caption text-grey-7 q-mt-xs">
+              {{ item.selectedSize?.label || 'Standard' }}
             </div>
           </q-item-section>
 
           <q-item-section side>
             <div
               v-if="!isCheckout"
-              class="column items-center bg-grey-2 rounded-borders q-pa-sm"
-              style="min-width: 45px"
+              class="column items-center bg-grey-2 rounded-borders q-pa-xs"
+              style="min-width: 40px"
             >
               <q-btn
                 flat
                 dense
                 round
-                size="md"
+                size="sm"
                 icon="add"
-                class="bg-white shadow-1"
+                class="bg-white shadow-1 text-primary"
                 @click="$emit('update-quantity', { index, delta: 1 })"
               />
-              <div class="text-subtitle2 text-weight-bolder q-py-sm">{{ item.quantity }}</div>
+              <div class="text-subtitle2 text-weight-bolder q-py-xs">{{ item.quantity }}</div>
               <q-btn
                 flat
                 dense
                 round
-                size="md"
+                size="sm"
                 :icon="item.quantity === 1 ? 'delete' : 'remove'"
                 :color="item.quantity === 1 ? 'negative' : 'black'"
                 class="bg-white shadow-1"
@@ -95,18 +108,23 @@
               flat
               color="negative"
               icon="delete_sweep"
-              label="Void"
-              class="bg-red-1"
-              size="md"
+              dense
+              class="bg-red-1 q-px-sm"
+              size="sm"
               @click="voidItem(index)"
               :disable="isProcessing"
             />
           </q-item-section>
         </q-item>
       </q-list>
+
+      <div v-if="cart.length === 0" class="column flex-center text-grey-5 q-pa-xl">
+        <q-icon name="shopping_basket" size="50px" />
+        <div class="q-mt-sm">Cart is empty</div>
+      </div>
     </q-scroll-area>
 
-    <div class="bg-white shadow-up-3 q-pa-sm">
+    <div class="bg-white shadow-up-3 q-pa-sm z-top relative-position">
       <div v-if="isCheckout" class="q-mb-sm bg-grey-1 q-pa-sm rounded-borders border-dashed">
         <div class="q-mb-sm row justify-center">
           <q-btn-toggle
@@ -119,10 +137,11 @@
             no-caps
             rounded
             unelevated
+            padding="6px 10px"
             :options="[
-              { label: 'Cash', value: 'Cash', icon: 'payments' },
-              { label: 'G-Cash', value: 'G-Cash', icon: 'account_balance_wallet' },
-              { label: 'Bank', value: 'Bank Transfer', icon: 'account_balance' },
+              { label: 'Cash', value: 'Cash' },
+              { label: 'GCash', value: 'G-Cash' },
+              { label: 'Bank', value: 'Bank Transfer' },
             ]"
           />
         </div>
@@ -132,6 +151,8 @@
             <q-input
               v-model.number="cashReceived"
               type="number"
+              inputmode="decimal"
+              pattern="[0-9]*"
               outlined
               dense
               label="Cash Received"
@@ -145,9 +166,10 @@
             />
           </div>
           <div class="col-auto text-right">
-            <div class="text-caption text-grey-7">Change</div>
+            <div class="text-caption text-grey-7" style="font-size: 10px">CHANGE</div>
             <div
-              class="text-subtitle1 text-weight-bolder"
+              class="text-h6 text-weight-bolder"
+              style="line-height: 1.1"
               :class="change < 0 ? 'text-negative' : 'text-positive'"
             >
               ₱{{ Math.max(0, change).toFixed(2) }}
@@ -156,26 +178,32 @@
         </div>
       </div>
 
-      <div class="q-gutter-y-xs q-mb-md">
-        <div class="row justify-between items-center q-mb-xs">
-          <div class="text-h6 text-primary text-weight-bolder">Total</div>
-          <div class="text-h6 text-primary text-weight-bolder">₱{{ finalTotal.toFixed(2) }}</div>
+      <div class="q-gutter-y-xs q-mb-sm">
+        <div class="row justify-between items-end">
+          <div class="column">
+            <div class="text-caption text-grey-6" v-if="!showTaxDetails">Total Amount</div>
+            <q-btn
+              flat
+              dense
+              size="xs"
+              :icon="showTaxDetails ? 'expand_less' : 'expand_more'"
+              :label="showTaxDetails ? 'Hide Details' : 'View Details'"
+              color="grey-6"
+              class="q-px-none self-start"
+              align="left"
+              @click="showTaxDetails = !showTaxDetails"
+            />
+          </div>
+          <div class="text-h5 text-primary text-weight-bolder">₱{{ finalTotal.toFixed(2) }}</div>
         </div>
-        <div class="row justify-end">
-          <q-btn
-            flat
-            dense
-            size="sm"
-            :icon="showTaxDetails ? 'expand_less' : 'expand_more'"
-            :label="showTaxDetails ? 'Hide Breakdown' : 'Show Breakdown'"
-            color="grey-6"
-            @click="showTaxDetails = !showTaxDetails"
-          />
-        </div>
+
         <q-slide-transition>
-          <div v-show="showTaxDetails" class="bg-grey-1 q-pa-sm rounded-borders text-caption">
+          <div
+            v-show="showTaxDetails"
+            class="bg-grey-1 q-pa-sm rounded-borders text-caption q-mb-sm"
+          >
             <div class="row justify-between text-grey-8">
-              <span>Subtotal (Net of VAT)</span>
+              <span>Subtotal (Net)</span>
               <span>₱{{ subtotal.toFixed(2) }}</span>
             </div>
             <div class="row justify-between text-grey-8">
@@ -195,10 +223,10 @@
           v-if="isCheckout"
           flat
           dense
-          color="grey-7"
+          color="grey-8"
           icon="arrow_back"
           label="Back"
-          class="col-3"
+          class="col-3 bg-grey-3"
           @click="isCheckout = false"
           :disable="isProcessing"
         />
@@ -208,17 +236,18 @@
           dense
           color="negative"
           icon="delete"
-          label="Clear"
-          class="col-3"
+          class="col-auto bg-red-1 q-px-md"
           @click="$emit('clear-cart')"
-          :disable="isProcessing"
+          :disable="isProcessing || cart.length === 0"
         />
 
         <q-btn
+          unelevated
           :color="isCheckout ? 'positive' : 'primary'"
           :icon="isCheckout ? 'check_circle' : 'payments'"
-          :label="isProcessing ? 'Processing...' : isCheckout ? 'Complete' : 'Pay Now'"
-          class="col-grow shadow-1"
+          :label="isProcessing ? 'Processing' : isCheckout ? 'Confirm Pay' : 'Charge'"
+          class="col-grow shadow-1 text-weight-bold"
+          size="md"
           :loading="isProcessing"
           :disable="cart.length === 0 || isCheckoutDisabled"
           @click="isCheckout ? handleCompleteOrder() : (isCheckout = true)"
@@ -235,7 +264,13 @@ import { doc, onSnapshot } from 'firebase/firestore'
 import { useQuasar } from 'quasar'
 
 const props = defineProps({ cart: Array, imgMap: Object, customer: Object })
-const emit = defineEmits(['update:customer', 'update-quantity', 'clear-cart', 'submit-order'])
+const emit = defineEmits([
+  'update:customer',
+  'update-quantity',
+  'clear-cart',
+  'submit-order',
+  'close-drawer',
+])
 const $q = useQuasar()
 
 // State
@@ -300,10 +335,8 @@ const handleCompleteOrder = async () => {
   isProcessing.value = true
 
   try {
-    // 2. Determine Logic for Payment Received & Change
     const finalPaymentReceived =
       paymentMethod.value === 'Cash' ? cashReceived.value || 0 : finalTotal.value
-
     const finalChange = paymentMethod.value === 'Cash' ? change.value : 0
 
     emit('submit-order', {
@@ -314,14 +347,8 @@ const handleCompleteOrder = async () => {
       itemCount: totalItems.value,
       taxRate: taxRate.value,
       paymentMethod: paymentMethod.value,
-
-      // --- FIXED LOGIC HERE ---
-      // If GCash/Bank: Payment Received = Total Amount, Change = 0
-      // If Cash: Payment Received = Input Value, Change = Calculated Change
       paymentReceived: finalPaymentReceived,
       change: finalChange,
-      // ------------------------
-
       referenceNumber: 'N/A',
       items: props.cart,
       customer: localCustomer.value,
@@ -356,5 +383,9 @@ watch(
 }
 .border-dashed {
   border: 2px dashed #e0e0e0;
+}
+/* Ensure footer stays on top of content if scrolling overlap occurs */
+.z-top {
+  z-index: 20;
 }
 </style>

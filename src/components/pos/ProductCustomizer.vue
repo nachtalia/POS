@@ -4,31 +4,32 @@
     @update:model-value="$emit('update:modelValue', $event)"
     position="bottom"
   >
-    <q-card
-      style="width: 600px; max-width: 100vw; border-radius: 20px 20px 0 0"
-      class="shadow-up-5"
-    >
+    <q-card style="width: 100%; max-width: 600px; border-radius: 20px 20px 0 0" class="shadow-up-5">
       <div v-if="product">
-        <q-card-section class="row items-start q-pb-none">
+        <q-card-section class="row no-wrap items-start q-pb-none">
           <q-img
             :src="imgMap[product.id] || PLACEHOLDER_IMG"
-            class="rounded-borders shadow-1 col-3 bg-grey-2"
-            style="height: 80px; width: 80px"
+            class="rounded-borders shadow-1 bg-grey-2"
+            style="height: 90px; width: 90px; flex-shrink: 0"
             fit="cover"
           />
           <div class="col q-pl-md">
-            <div class="text-h6 text-weight-bold">{{ product.productName }}</div>
-            <div class="text-caption text-grey-7 ellipsis-2-lines">{{ product.description }}</div>
-            <div class="text-h5 text-primary text-weight-bolder q-mt-xs">
+            <div class="row justify-between items-start">
+              <div class="text-h6 text-weight-bold leading-tight">{{ product.productName }}</div>
+              <q-btn icon="close" flat round dense color="grey-7" v-close-popup size="sm" />
+            </div>
+            <div class="text-caption text-grey-7 ellipsis-2-lines q-mt-xs">
+              {{ product.description }}
+            </div>
+            <div class="text-h6 text-primary text-weight-bolder q-mt-sm">
               ₱{{ currentPrice.toFixed(2) }}
             </div>
           </div>
-          <q-btn icon="close" flat round color="grey-7" v-close-popup />
         </q-card-section>
 
         <q-separator class="q-my-md" />
 
-        <q-card-section style="max-height: 50vh" class="scroll q-pt-none">
+        <q-card-section style="max-height: 70vh" class="scroll q-pt-none">
           <div v-if="product.sizes && product.sizes.length > 0" class="q-mb-lg">
             <div class="text-subtitle2 text-grey-8 q-mb-sm font-weight-bold">Select Size</div>
             <div class="row q-gutter-sm">
@@ -38,16 +39,16 @@
                 :label="size.label"
                 :class="
                   form.size?.label === size.label
-                    ? 'bg-primary text-white'
+                    ? 'bg-primary text-white shadow-2'
                     : 'bg-grey-2 text-grey-8'
                 "
-                class="col-grow rounded-borders q-py-sm"
+                class="col-grow rounded-borders q-py-sm transition-generic"
                 flat
                 no-caps
                 @click="form.size = size"
               >
                 <div class="column items-center">
-                  <span>{{ size.label }}</span>
+                  <span class="text-weight-bold">{{ size.label }}</span>
                   <span class="text-xs opacity-80" v-if="size.price > 0">+₱{{ size.price }}</span>
                 </div>
               </q-btn>
@@ -59,24 +60,27 @@
               Customize (Add-ons)
             </div>
             <div class="row q-col-gutter-sm">
-              <div v-for="addon in availableAddons" :key="addon.id" class="col-6">
+              <div v-for="addon in availableAddons" :key="addon.id" class="col-12 col-sm-6">
                 <q-item
                   tag="label"
-                  class="bg-grey-1 rounded-borders border-transparent transition-generic"
+                  class="bg-grey-1 rounded-borders border-transparent transition-generic q-px-sm"
                   :class="{
                     'bg-blue-1 border-primary': form.addons.some((a) => a.id === addon.id),
                   }"
+                  dense
                 >
                   <q-item-section side>
                     <q-checkbox v-model="form.addons" :val="addon" dense color="primary" />
                   </q-item-section>
                   <q-item-section>
-                    <q-item-label class="text-weight-medium">
-                      {{ addon.name }}
-                    </q-item-label>
-                    <q-item-label caption class="text-primary">
-                      +₱{{ Number(addon.price || 0).toFixed(2) }}
-                    </q-item-label>
+                    <div class="row justify-between items-center full-width">
+                      <q-item-label class="text-weight-medium text-body2">
+                        {{ addon.name }}
+                      </q-item-label>
+                      <q-item-label caption class="text-primary text-weight-bold">
+                        +₱{{ Number(addon.price || 0).toFixed(2) }}
+                      </q-item-label>
+                    </div>
                   </q-item-section>
                 </q-item>
               </div>
@@ -91,35 +95,41 @@
               dense
               placeholder="e.g. Less ice, separate sauce..."
               bg-color="white"
+              autogrow
             />
           </div>
         </q-card-section>
 
-        <q-card-actions class="q-pa-md bg-white border-top row items-center no-wrap q-gutter-x-md">
-          <div class="row items-center bg-grey-2 rounded-capsule q-px-sm" style="height: 56px">
+        <q-card-actions class="q-pa-md bg-white border-top row no-wrap items-center q-gutter-x-md">
+          <div
+            class="col-auto row no-wrap items-center bg-grey-2 rounded-capsule q-px-xs"
+            style="height: 56px"
+          >
             <q-btn
               round
               flat
               dense
-              size="lg"
               icon="remove"
               color="grey-9"
+              size="md"
               @click="form.quantity > 1 ? form.quantity-- : null"
             />
-            <div class="q-px-md text-h5 text-weight-bold">{{ form.quantity }}</div>
-            <q-btn round flat dense size="lg" icon="add" color="grey-9" @click="form.quantity++" />
+            <div class="text-h6 text-weight-bold text-center" style="min-width: 40px">
+              {{ form.quantity }}
+            </div>
+            <q-btn round flat dense icon="add" color="grey-9" size="md" @click="form.quantity++" />
           </div>
 
           <q-btn
             color="primary"
             class="col-grow shadow-2 rounded-capsule text-weight-bold"
-            size="lg"
+            style="height: 56px"
             no-caps
             @click="confirm"
           >
-            <div class="row items-center justify-between full-width">
-              <span>Add to Order</span>
-              <span>₱{{ (currentPrice * form.quantity).toFixed(2) }}</span>
+            <div class="row items-center justify-between full-width q-px-sm">
+              <span class="text-body1">Add to Order</span>
+              <span class="text-h6">₱{{ (currentPrice * form.quantity).toFixed(2) }}</span>
             </div>
           </q-btn>
         </q-card-actions>
@@ -209,5 +219,8 @@ const confirm = () => {
 }
 .transition-generic {
   transition: all 0.2s ease-in-out;
+}
+.leading-tight {
+  line-height: 1.1;
 }
 </style>

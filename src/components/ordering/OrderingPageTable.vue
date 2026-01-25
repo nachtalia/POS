@@ -1,23 +1,23 @@
 <template>
-  <div class="q-pa-md bg-grey-1 full-height">
+  <div :class="$q.screen.gt.xs ? 'q-pa-md' : 'q-pa-sm'" class="bg-grey-1 full-height">
     <div class="row q-col-gutter-md">
       <div class="col-12">
         <q-card flat bordered class="shadow-1 rounded-borders bg-white">
           <div class="q-pa-md row items-center justify-between q-gutter-y-sm">
-            <div>
+            <div class="col-12 col-sm-auto text-center text-sm-left">
               <div class="text-h6 text-weight-bold text-grey-9">Order Management</div>
               <div class="text-caption text-grey-6">Realtime Order Tracking</div>
             </div>
 
             <q-btn
+              v-if="canCreateOrder"
               color="primary"
               icon="point_of_sale"
-              label="Open POS Terminal"
+              label="Open POS"
               unelevated
               no-caps
-              class="q-px-md shadow-2"
+              :class="$q.screen.xs ? 'full-width' : 'q-px-md shadow-2'"
               @click="goToPOS"
-              v-if="canCreateOrder"
             />
           </div>
 
@@ -25,34 +25,29 @@
 
           <div class="q-pa-md bg-grey-1">
             <div class="row q-col-gutter-sm">
-              <div class="col-12 col-md-4">
+              <div class="col-12 col-sm-8">
                 <q-input
                   v-model="searchQuery"
                   outlined
                   dense
                   bg-color="white"
-                  placeholder="Search Order #, ID, or Customer..."
+                  placeholder="Search orders..."
+                  clearable
                 >
                   <template v-slot:prepend>
-                    <q-icon name="search" class="text-grey-5" />
+                    <q-icon name="search" />
                   </template>
                 </q-input>
               </div>
-              <div class="col-12 col-md-3">
+              <div class="col-12 col-sm-4">
                 <q-select
                   v-model="statusFilter"
                   :options="statusOptions"
                   outlined
                   dense
                   bg-color="white"
-                  emit-value
-                  map-options
-                  label="Filter Status"
-                >
-                  <template v-slot:prepend>
-                    <q-icon name="filter_list" class="text-grey-5" />
-                  </template>
-                </q-select>
+                  label="Status"
+                />
               </div>
             </div>
           </div>
@@ -63,69 +58,86 @@
             row-key="id"
             :loading="loading"
             flat
-            class="sticky-header-table"
+            :grid="$q.screen.xs"
+            :hide-header="$q.screen.xs"
+            class="order-table"
             :pagination="{ rowsPerPage: 10, sortBy: 'date', descending: true }"
           >
-            <template v-slot:header="props">
-              <q-tr :props="props">
-                <q-th v-for="col in props.cols" :key="col.name" :props="props" class="text-grey-7">
-                  {{ col.label }}
-                </q-th>
-              </q-tr>
-            </template>
-
             <template v-slot:body="props">
               <q-tr :props="props" class="cursor-pointer hover-bg" @click="openReceipt(props.row)">
                 <q-td key="id" :props="props">
                   <span class="text-weight-bold text-primary font-mono">
-                    {{ props.row.orderNumber || props.row.id.substring(0, 8) + '...' }}
+                    #{{ props.row.orderNumber || props.row.id.substring(0, 8) }}
                   </span>
                 </q-td>
-
                 <q-td key="customerName" :props="props">
-                  {{ props.row.customerName || props.row.customer?.name || 'Walk-in Customer' }}
+                  {{ props.row.customerName || 'Walk-in' }}
                 </q-td>
-
                 <q-td key="date" :props="props">
                   {{ formatDate(props.row.createdAt || props.row.date) }}
                 </q-td>
-
                 <q-td key="status" :props="props">
-                  <q-badge
-                    :color="getStatusColor(props.row.status)"
-                    rounded
-                    class="q-px-sm q-py-xs"
-                  >
+                  <q-badge :color="getStatusColor(props.row.status)" rounded>
                     {{ props.row.status }}
                   </q-badge>
                 </q-td>
-
-                <q-td key="total" :props="props" class="text-weight-bold text-grey-9">
+                <q-td key="totalAmount" :props="props" class="text-weight-bold">
                   {{ formatTotal(props.row) }}
                 </q-td>
-
                 <q-td key="actions" :props="props">
-                  <q-btn
-                    flat
-                    round
-                    dense
-                    size="sm"
-                    color="grey-7"
-                    icon="visibility"
-                    @click.stop="openReceipt(props.row)"
-                  >
-                    <q-tooltip>View Receipt</q-tooltip>
-                  </q-btn>
+                  <q-btn flat round dense size="sm" icon="chevron_right" />
                 </q-td>
               </q-tr>
             </template>
 
+            <template v-slot:item="props">
+              <div class="col-12 q-px-xs q-py-xs">
+                <q-item
+                  clickable
+                  v-ripple
+                  class="bg-white border-bottom q-pa-md"
+                  @click="openReceipt(props.row)"
+                >
+                  <q-item-section avatar>
+                    <q-avatar
+                      :color="getStatusColor(props.row.status)"
+                      text-color="white"
+                      icon="receipt_long"
+                      size="40px"
+                    />
+                  </q-item-section>
+
+                  <q-item-section>
+                    <q-item-label class="text-weight-bold text-primary font-mono">
+                      #{{ props.row.orderNumber || props.row.id.substring(0, 8) }}
+                    </q-item-label>
+                    <q-item-label caption>
+                      {{ props.row.customerName || 'Walk-in' }}
+                    </q-item-label>
+                    <q-item-label caption class="text-grey-6">
+                      {{ formatDate(props.row.createdAt || props.row.date) }}
+                    </q-item-label>
+                  </q-item-section>
+
+                  <q-item-section side>
+                    <div class="text-subtitle1 text-weight-bolder text-grey-9">
+                      {{ formatTotal(props.row) }}
+                    </div>
+                    <q-badge
+                      :label="props.row.status"
+                      :color="getStatusColor(props.row.status)"
+                      outline
+                      size="sm"
+                    />
+                  </q-item-section>
+                </q-item>
+              </div>
+            </template>
+
             <template v-slot:no-data>
-              <div class="full-width row flex-center q-pa-lg text-grey-6">
-                <div class="column items-center">
-                  <q-icon name="assignment_late" size="48px" class="q-mb-sm text-grey-4" />
-                  <div>No orders found.</div>
-                </div>
+              <div class="full-width column flex-center q-pa-xl text-grey-5">
+                <q-icon name="history" size="64px" />
+                <div class="text-h6 q-mt-md">No orders found</div>
               </div>
             </template>
           </q-table>
@@ -139,18 +151,17 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router' // Import Router
+import { useRouter } from 'vue-router'
+import { useQuasar } from 'quasar'
 import { db } from 'src/services/firebase'
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore'
 import { useAuthStore } from 'src/features/index.js'
-
-// Components
 import ReceiptDialog from 'src/components/ordering/ReceiptDialog.vue'
 
+const $q = useQuasar()
 const router = useRouter()
 const authStore = useAuthStore()
 
-// State
 const orders = ref([])
 const loading = ref(true)
 const searchQuery = ref('')
@@ -160,159 +171,57 @@ const selectedOrder = ref(null)
 const statusOptions = ['All', 'Paid', 'Pending', 'Void', 'Cancelled']
 let unsubscribeOrders = null
 
-// Permissions
-const has = (perm) =>
-  authStore.isSuperAdmin ||
-  authStore.permissions.includes('*') ||
-  authStore.permissions.includes(perm)
-const canCreateOrder = computed(() => authStore.can('create', 'ordering') || has('ordering:create'))
+const canCreateOrder = computed(() => {
+  if (authStore.isSuperAdmin) return true
+  return authStore.can?.('create', 'ordering') || authStore.permissions?.includes('ordering:create')
+})
 
-// --- Navigation Logic ---
-const goToPOS = () => {
-  // Navigate to the separate POS page
-  router.push({ name: 'POS' })
-}
+const goToPOS = () => router.push({ name: 'POS' })
 
-// --- Data Loading ---
 onMounted(() => {
   const ordersQuery = query(collection(db, 'orders'), orderBy('createdAt', 'desc'))
-
-  unsubscribeOrders = onSnapshot(
-    ordersQuery,
-    (snapshot) => {
-      orders.value = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }))
-      loading.value = false
-    },
-    (err) => {
-      console.error('Error fetching orders:', err)
-      loading.value = false
-    },
-  )
+  unsubscribeOrders = onSnapshot(ordersQuery, (snapshot) => {
+    orders.value = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+    loading.value = false
+  })
 })
 
 onUnmounted(() => {
   if (unsubscribeOrders) unsubscribeOrders()
 })
 
-// --- Columns ---
 const columns = [
-  {
-    name: 'id',
-    label: 'Order ID',
-    field: 'id',
-    align: 'left',
-    sortable: true,
-  },
-  {
-    name: 'customerName',
-    label: 'Customer Name',
-    field: 'customerName',
-    align: 'left',
-    sortable: true,
-  },
-  {
-    name: 'date',
-    label: 'Date',
-    field: 'createdAt',
-    align: 'left',
-    sortable: true,
-  },
-  {
-    name: 'status',
-    label: 'Status',
-    field: 'status',
-    align: 'center',
-    sortable: true,
-  },
-  {
-    name: 'totalAmount',
-    label: 'Total Amount',
-    field: 'totalAmount',
-    align: 'right',
-    sortable: true,
-    format: (val) => `₱${Number(val).toFixed(2)}`,
-  },
-  {
-    name: 'items',
-    label: 'Items',
-    field: 'items',
-    align: 'center',
-  },
-  {
-    name: 'orderType',
-    label: 'Type',
-    field: 'orderType',
-    align: 'center',
-  },
-  {
-    name: 'paymentMethod',
-    label: 'Payment',
-    field: 'paymentMethod',
-    align: 'center',
-  },
-  {
-    name: 'actions',
-    label: 'Actions',
-    field: 'actions',
-    align: 'center',
-  },
+  { name: 'id', label: 'Order ID', field: 'id', align: 'left', sortable: true },
+  { name: 'customerName', label: 'Customer', field: 'customerName', align: 'left', sortable: true },
+  { name: 'date', label: 'Date', field: 'createdAt', align: 'left', sortable: true },
+  { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
+  { name: 'totalAmount', label: 'Total', field: 'totalAmount', align: 'right', sortable: true },
+  { name: 'actions', label: '', align: 'right' },
 ]
 
-// --- Filtering Logic ---
 const filteredOrders = computed(() => {
   let list = orders.value
-
-  if (statusFilter.value !== 'All') {
-    list = list.filter((o) => o.status === statusFilter.value)
-  }
-
+  if (statusFilter.value !== 'All') list = list.filter((o) => o.status === statusFilter.value)
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
-    list = list.filter((o) => {
-      const hasId = o.id && o.id.toLowerCase().includes(q)
-      const hasOrderNum = o.orderNumber && String(o.orderNumber).toLowerCase().includes(q)
-      const custName = o.customerName || o.customer?.name || ''
-      const hasName = custName.toLowerCase().includes(q)
-      return hasId || hasOrderNum || hasName
-    })
+    list = list.filter((o) => (o.customerName || '').toLowerCase().includes(q) || o.id.includes(q))
   }
   return list
 })
 
-// --- Helpers ---
 const formatDate = (val) => {
   if (!val) return '-'
-  const dateObj = val.toDate ? val.toDate() : new Date(val)
-  return isNaN(dateObj)
-    ? '-'
-    : dateObj.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
+  const d = val?.toDate ? val.toDate() : new Date(val)
+  return d.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })
 }
 
-const getStatusColor = (status) => {
-  switch (status) {
-    case 'Paid':
-      return 'positive'
-    case 'Pending':
-      return 'warning'
-    case 'Void':
-      return 'negative'
-    default:
-      return 'grey'
-  }
+const getStatusColor = (s) => {
+  const c = { Paid: 'positive', Pending: 'warning', Void: 'negative', Cancelled: 'grey-8' }
+  return c[s] || 'grey'
 }
 
-const formatTotal = (row) => {
-  // Robust total calculation
-  let val = row.totalAmount ?? row.total
-  if (val === undefined) {
-    const items = row.items || []
-    val = items.reduce((acc, i) => acc + Number(i.unitPrice) * Number(i.quantity), 0)
-  }
-  return `₱${Number(val).toFixed(2)}`
-}
+const formatTotal = (row) =>
+  `₱${Number(row.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
 
 const openReceipt = (order) => {
   selectedOrder.value = order
@@ -320,8 +229,33 @@ const openReceipt = (order) => {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+.font-mono {
+  font-family: 'Roboto Mono', monospace;
+}
 .hover-bg:hover {
-  background-color: #f5f5f5;
+  background-color: #f8f9fa;
+}
+.border-bottom {
+  border-bottom: 1px solid #eeeeee;
+}
+
+.order-table {
+  /* Dynamic height for sticky header */
+  max-height: calc(100vh - 280px);
+  thead tr th {
+    position: sticky;
+    z-index: 1;
+    background-color: #fff;
+    top: 0;
+  }
+}
+
+/* Specific mobile tweaks */
+@media (max-width: $breakpoint-xs-max) {
+  .order-table {
+    max-height: none;
+    background: transparent !important;
+  }
 }
 </style>
