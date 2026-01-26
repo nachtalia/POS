@@ -1,7 +1,7 @@
 <template>
   <q-page :padding="$q.screen.gt.xs" class="bg-app" :class="{ 'q-pa-sm': $q.screen.xs }">
     <div class="row" :class="$q.screen.gt.xs ? 'q-col-gutter-md' : 'q-col-gutter-sm'">
-      <div class="col-12">
+      <div class="col-12 q-mt-sm">
         <DashboardHeader
           @refresh="refreshData"
           @logout="handleLogout"
@@ -10,7 +10,7 @@
         />
       </div>
 
-      <div class="col-12">
+      <div class="col-12 q-mt-md q-mb-md">
         <div
           class="row"
           :class="{
@@ -70,7 +70,7 @@
         </div>
       </div>
 
-      <div class="col-12 col-md-8">
+      <div class="col-12 col-md-8 q-mb-md">
         <SalesChart :orders="orderStore.orders" />
       </div>
 
