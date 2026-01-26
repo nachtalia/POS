@@ -1,8 +1,8 @@
 <template>
-  <q-page class="q-pa-sm q-pa-md-md bg-grey-2">
-    <div class="row justify-center">
-      <div class="col-12" style="max-width: 1400px">
-        <div class="row items-center justify-between q-mb-md">
+  <q-page class="q-pa-lg q-pa-md-md bg-grey-2">
+    <div class="row">
+      <div class="col-12">
+        <div class="row items-center justify-between">
           <div class="col-12 col-sm-auto q-mb-md q-mb-sm-none">
             <div class="text-h5 text-weight-bold text-blue-grey-9">User Management</div>
             <div class="text-caption text-grey-7">Manage users, access, and roles</div>
