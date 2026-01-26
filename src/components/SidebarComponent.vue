@@ -11,6 +11,9 @@
               style="height: 100px; width: 100px; object-fit: cover; border-radius: 50%"
             />
           </div>
+          <div class="text-h6 q-mt-md text-bold text-primary text-center">
+            {{ systemName }}
+          </div>
         </div>
       </div>
 
@@ -105,6 +108,10 @@ const systemSettingsStore = useSystemSettingsStore()
 
 const { settings } = storeToRefs(systemSettingsStore)
 
+const systemName = computed(() => {
+  return systemSettingsStore.settings?.systemName || 'POS System'
+})
+
 // Fetching Logic Removed (Handled by MainLayout now)
 
 const displayedLogo = computed(() => {
@@ -180,7 +187,7 @@ const onLogout = async () => {
 </script>
 
 <style lang="scss">
-@use "sass:color";
+@use 'sass:color';
 
 .q-item--active {
   color: $primary;
