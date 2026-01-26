@@ -1,8 +1,6 @@
 <template>
   <q-card>
     <q-card-section>
-      <div class="text-h6 text-blue-grey-8 q-mb-md">User List</div>
-
       <div class="row items-center justify-between q-mb-md">
         <div class="col-12 col-md-4">
           <q-input

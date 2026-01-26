@@ -1,6 +1,6 @@
 <template>
-  <q-page class="bg-blue-grey-1 flex flex-center no-scroll overflow-hidden">
-    <div class="column full-width q-px-md" style="max-width: 1000px; height: 75vh">
+  <q-page class="bg-blue-grey-1 row q-pa-lg">
+    <div class="col-12">
       <div class="col-auto q-mb-md">
         <div class="row items-center">
           <q-icon name="style" size="sm" color="primary" class="q-mr-xs" />
@@ -13,7 +13,7 @@
         </div>
       </div>
 
-      <div class="col row q-col-gutter-md overflow-hidden">
+      <div class="col-12 row q-col-gutter-sm overflow-hidden">
         <div class="col-12 col-md-5 column">
           <q-card class="col shadow-1 bg-white q-pa-md border-radius-lg column">
             <div class="text-overline text-primary text-weight-bold q-mb-sm">Logo Assets</div>
