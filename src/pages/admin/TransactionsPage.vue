@@ -1,7 +1,7 @@
 <template>
-  <q-page class="q-pa-sm q-pa-md-md bg-grey-2">
-    <div class="row justify-center">
-      <div class="col-12" style="max-width: 1400px">
+  <q-page class="q-pa-lg q-pa-md-md bg-grey-2">
+    <div class="row">
+      <div class="col-12">
         <div class="row items-center justify-between q-mb-md">
           <div class="col">
             <div class="text-h5 text-weight-bold text-blue-grey-9">Transactions</div>
