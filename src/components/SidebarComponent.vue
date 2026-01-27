@@ -2,7 +2,7 @@
   <q-drawer v-model="model" show-if-above :width="280" bordered class="bg-white">
     <div class="column full-height no-wrap">
       <div class="q-pa-md">
-        <div class="row justify-center">
+        <div class="column items-center">
           <div class="logo-container">
             <img
               :src="displayedLogo"
@@ -111,8 +111,6 @@ const { settings } = storeToRefs(systemSettingsStore)
 const systemName = computed(() => {
   return systemSettingsStore.settings?.systemName || 'POS System'
 })
-
-// Fetching Logic Removed (Handled by MainLayout now)
 
 const displayedLogo = computed(() => {
   return (
