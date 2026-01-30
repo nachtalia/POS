@@ -2,27 +2,31 @@
   <q-page class="q-pa-lg q-pa-md-md bg-grey-2">
     <div class="row">
       <div class="col-12">
-        <div class="row items-center justify-between q-mb-md">
-          <div class="col">
-            <div class="text-h5 text-weight-bold text-blue-grey-9">Transactions</div>
-            <div class="text-caption text-grey-7 line-height-normal">Manage history</div>
-          </div>
-
-          <div class="col-auto">
-            <q-btn
-              color="primary"
-              icon="cloud_download"
-              label="Export"
-              no-caps
-              unelevated
-              :dense="$q.screen.lt.sm"
-              class="radius-8"
-              @click="exportTransactions"
-            />
-          </div>
-        </div>
-
         <q-card class="shadow-2 rounded-xl bg-white overflow-hidden">
+          <div class="q-pa-md border-bottom-light">
+            <div class="page-header">
+              <div class="page-header-title">
+                <div>
+                  <div class="page-title">Transactions</div>
+                  <div class="page-subtitle">Manage history</div>
+                </div>
+              </div>
+
+              <div class="col-auto">
+                <q-btn
+                  color="primary"
+                  icon="cloud_download"
+                  label="Export"
+                  no-caps
+                  unelevated
+                  :dense="$q.screen.lt.sm"
+                  class="btn-primary"
+                  @click="exportTransactions"
+                />
+              </div>
+            </div>
+          </div>
+
           <div class="q-pa-md border-bottom-light">
             <div class="row q-col-gutter-sm">
               <div class="col-12 col-md-4">
@@ -31,7 +35,7 @@
                   outlined
                   dense
                   placeholder="Search Order #, Name..."
-                  class="rounded-input"
+                  class="input-field"
                   bg-color="grey-1"
                 >
                   <template v-slot:prepend>
@@ -54,7 +58,7 @@
                   dense
                   label="From"
                   readonly
-                  class="rounded-input"
+                  class="input-field"
                   bg-color="grey-1"
                 >
                   <template v-slot:prepend>
@@ -77,7 +81,7 @@
                   dense
                   label="To"
                   readonly
-                  class="rounded-input"
+                  class="input-field"
                   bg-color="grey-1"
                 >
                   <template v-slot:prepend>

@@ -123,11 +123,15 @@ const displayedLogo = computed(() => {
 // Get Current Role/Permissions directly from Store (reactive)
 const currentUserRole = computed(() => authStore.user?.role || '')
 const isSuperAdmin = computed(() => {
-  const role = currentUserRole.value.toLowerCase()
-  return role === 'admin' || role === 'superadmin'
+  const role = String(currentUserRole.value || '')
+    .toLowerCase()
+    .replace(/[\s_-]+/g, '')
+  return role === 'superadmin'
 })
 
 const canAccess = (route) => {
+  if (route.meta?.mainOnly && !authStore.isMainAdmin) return false
+  if (route.meta?.branchOnly && authStore.isMainAdmin) return false
   if (isSuperAdmin.value) return true
   if (!route.meta?.permissions && !route.meta?.roles) return true
 

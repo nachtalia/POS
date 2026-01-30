@@ -33,11 +33,35 @@ export const useUserManagementStore = defineStore('usermanagementStore', {
     async fetchUsers() {
       this.loading = true
       try {
-        const querySnapshot = await getDocs(collection(db, 'user'))
-        this.users = querySnapshot.docs.map((d) => ({
+        const { useAuthStore } = await import('src/features/index')
+        const authStore = useAuthStore()
+        const branchId = authStore.branchId
+        const orgOwnerUid = authStore.orgOwnerUid
+        const normalizeRole = (role) =>
+          String(role || '')
+            .toLowerCase()
+            .replace(/[\s_-]+/g, '')
+
+        let q
+        if (authStore.isMainAdmin && orgOwnerUid) {
+          q = query(collection(db, 'user'), where('orgOwnerUid', '==', orgOwnerUid))
+        } else if (branchId) {
+          q = query(collection(db, 'user'), where('branchId', '==', branchId))
+        } else {
+          this.users = []
+          this.loading = false
+          return
+        }
+
+        const querySnapshot = await getDocs(q)
+        let list = querySnapshot.docs.map((d) => ({
           id: d.id,
           ...d.data(),
         }))
+        if (authStore.isMainAdmin) {
+          list = list.filter((u) => normalizeRole(u.role) === 'superadmin')
+        }
+        this.users = list
       } catch (error) {
         console.error('Error fetching users:', error)
       } finally {
@@ -49,13 +73,39 @@ export const useUserManagementStore = defineStore('usermanagementStore', {
       this.loading = true
       this.history = []
       try {
+        const { useAuthStore } = await import('src/features/index')
+        const authStore = useAuthStore()
+        const branchId = authStore.branchId
         const logsRef = collection(db, 'audit_logs')
-        const q = query(logsRef, where('entityId', '==', entityId), orderBy('timestamp', 'desc'))
-        const snapshot = await getDocs(q)
-        this.history = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }))
+        try {
+          const qRef = query(
+            logsRef,
+            where('branchId', '==', branchId),
+            where('entityId', '==', entityId),
+            orderBy('timestamp', 'desc'),
+          )
+          const snapshot = await getDocs(qRef)
+          this.history = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+        } catch (inner) {
+          const message = String(inner?.message || '')
+          const isIndexError = /requires an index/i.test(message)
+          if (!isIndexError) throw inner
+          const fallbackRef = query(
+            logsRef,
+            where('branchId', '==', branchId),
+            where('entityId', '==', entityId),
+          )
+          const snapshot = await getDocs(fallbackRef)
+          const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+          const toMillis = (ts) =>
+            ts?.toDate
+              ? ts.toDate().getTime()
+              : typeof ts?.seconds === 'number'
+                ? ts.seconds * 1000
+                : 0
+          list.sort((a, b) => toMillis(b.timestamp) - toMillis(a.timestamp))
+          this.history = list
+        }
       } catch (error) {
         console.error('Error fetching user history:', error)
       } finally {
@@ -65,6 +115,22 @@ export const useUserManagementStore = defineStore('usermanagementStore', {
 
     async addUser(userData) {
       const { username, email, password, role, permissions = [] } = userData
+      const { useAuthStore } = await import('src/features/index')
+      const authStore = useAuthStore()
+      const normalizeRole = (r) =>
+        String(r || '')
+          .toLowerCase()
+          .replace(/[\s_-]+/g, '')
+      const normalizedRole = normalizeRole(role)
+      const mainUid = authStore.orgOwnerUid
+
+      if (normalizedRole === 'superadmin') {
+        if (!authStore.isMainAdmin) {
+          throw new Error('Only main admin can create a branch super admin')
+        }
+      } else if (authStore.isMainAdmin) {
+        throw new Error('Main admin can only create branch super admins')
+      }
 
       try {
         const userCred = await createUserWithEmailAndPassword(secondaryAuth, email, password)
@@ -73,9 +139,11 @@ export const useUserManagementStore = defineStore('usermanagementStore', {
         const payload = {
           username,
           email,
-          role,
+          role: normalizedRole === 'superadmin' ? 'superadmin' : role,
           permissions: permissions,
           uid,
+          branchId: normalizedRole === 'superadmin' ? uid : authStore.branchId,
+          orgOwnerUid: mainUid,
           createdAt: Timestamp.now(),
           updatedAt: Timestamp.now(),
         }
@@ -90,6 +158,8 @@ export const useUserManagementStore = defineStore('usermanagementStore', {
           entityType: 'user',
           entityId: uid,
           details: { username, email, role, permissions },
+          branchId: payload.branchId,
+          orgOwnerUid: payload.orgOwnerUid,
         })
 
         await signOut(secondaryAuth)
@@ -100,9 +170,35 @@ export const useUserManagementStore = defineStore('usermanagementStore', {
       }
     },
 
-    // ----------------------------------------------------------------
-    // UPDATED: updateUser logic to handle Cloud Function
-    // ----------------------------------------------------------------
+    async backfillBranchOwnersForMain(limitCount = 200) {
+      const { useAuthStore } = await import('src/features/index')
+      const authStore = useAuthStore()
+      const mainUid = authStore.user?.uid
+      if (!authStore.isMainAdmin || !mainUid) return 0
+
+      const normalizeRole = (r) =>
+        String(r || '')
+          .toLowerCase()
+          .replace(/[\s_]+/g, '')
+      const { getDocs, limit, writeBatch } = await import('firebase/firestore')
+      const q = query(collection(db, 'user'), where('branchId', '==', mainUid), limit(limitCount))
+      const snap = await getDocs(q)
+      const batch = writeBatch(db)
+      let updated = 0
+
+      snap.docs.forEach((d) => {
+        const data = d.data()
+        const uid = data.uid || d.id
+        if (normalizeRole(data.role) !== 'superadmin') return
+        batch.update(doc(db, 'user', d.id), { branchId: uid, orgOwnerUid: mainUid })
+        updated++
+      })
+
+      if (updated > 0) {
+        await batch.commit()
+      }
+      return updated
+    },
     async updateUser(id, updates) {
       try {
         const ref = doc(db, 'user', id)
@@ -118,8 +214,16 @@ export const useUserManagementStore = defineStore('usermanagementStore', {
 
         const payload = { ...safeUpdates, updatedAt: Timestamp.now() }
 
-        // Calculate Diff and Log (Firestore Data only)
-        await logEditAndGetDiff('user', id, payload, 'userManagement', 'user')
+        // Calculate Diff and Log
+        await logEditAndGetDiff(
+          'user',
+          id,
+          payload,
+          'userManagement',
+          'user',
+          payload.branchId,
+          payload.orgOwnerUid,
+        )
 
         // 2. Update Firestore Metadata
         await updateDoc(ref, payload)
@@ -179,6 +283,8 @@ export const useUserManagementStore = defineStore('usermanagementStore', {
 
     async fetchRoles() {
       try {
+        const { useAuthStore } = await import('src/features/index')
+        const authStore = useAuthStore()
         const q = query(collection(db, 'roles'), orderBy('value'))
         const querySnapshot = await getDocs(q)
 
@@ -188,7 +294,21 @@ export const useUserManagementStore = defineStore('usermanagementStore', {
         }))
 
         if (fetchedRoles.length > 0) {
-          this.roles = fetchedRoles
+          const list = [...fetchedRoles]
+          const normalizeRole = (r) =>
+            String(r || '')
+              .toLowerCase()
+              .replace(/[\s_-]+/g, '')
+          const hasSuperAdmin = list.some((r) => normalizeRole(r.value) === 'superadmin')
+          if (authStore.isMainAdmin && !hasSuperAdmin) {
+            list.unshift({
+              id: 'superadmin',
+              label: 'Super Admin',
+              value: 'superadmin',
+              permissions: ['*'],
+            })
+          }
+          this.roles = list
         } else {
           this.roles = [{ label: 'Administrator', value: 'admin', permissions: ['*'] }]
         }

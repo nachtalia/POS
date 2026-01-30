@@ -23,6 +23,7 @@ const routes = [
         name: 'Dashboard',
         component: () => import('pages/admin/DashboardPage.vue'),
         meta: {
+          requiresAuth: true,
           isSidebarItem: true,
           label: 'Dashboard',
           icon: 'dashboard',
@@ -34,11 +35,13 @@ const routes = [
         name: 'Inventory',
         component: () => import('pages/admin/InventoryPage.vue'),
         meta: {
+          requiresAuth: true,
           isSidebarItem: true,
           label: 'Products',
           icon: 'inventory',
           caption: 'Manage products',
           permissions: ['inventory:view'],
+          branchOnly: true,
         },
       },
 
@@ -49,11 +52,13 @@ const routes = [
         // Points to the file you renamed to OrderManagementPage.vue
         component: () => import('pages/admin/OrderManagementPage.vue'),
         meta: {
+          requiresAuth: true,
           isSidebarItem: true,
           label: 'Order Management',
           icon: 'list_alt', // Changed icon to represent a list/history
           caption: 'View and track past orders',
           permissions: ['ordering:view'],
+          branchOnly: true,
         },
       },
 
@@ -62,11 +67,13 @@ const routes = [
         name: 'Transactions',
         component: () => import('pages/admin/TransactionsPage.vue'),
         meta: {
+          requiresAuth: true,
           isSidebarItem: true,
           label: 'Transactions',
           icon: 'receipt_long',
           caption: 'Transaction history',
           permissions: ['transactions:view'],
+          branchOnly: true,
         },
       },
       {
@@ -74,6 +81,7 @@ const routes = [
         name: 'UserManagement',
         component: () => import('pages/admin/UserManagement.vue'),
         meta: {
+          requiresAuth: true,
           isSidebarItem: true,
           label: 'User Management',
           icon: 'people',
@@ -91,6 +99,7 @@ const routes = [
         name: 'AuditTrail',
         component: () => import('pages/admin/AuditTrail.vue'),
         meta: {
+          requiresAuth: true,
           isSidebarItem: true,
           label: 'Audit Trail',
           icon: 'history',
@@ -103,11 +112,13 @@ const routes = [
         name: 'Settings',
         component: () => import('pages/admin/SettingsPage.vue'),
         meta: {
+          requiresAuth: true,
           isSidebarItem: true,
           label: 'Settings',
           icon: 'settings',
           caption: 'System settings',
           permissions: ['settings:view'],
+          mainOnly: true,
         },
       },
     ],
@@ -124,9 +135,14 @@ const routes = [
         name: 'POS', // This matches router.push({ name: 'POS' }) or path '/pos'
         // Points to the NEW wrapper page we created
         component: () => import('pages/admin/POSTerminalPage.vue'),
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, permissions: ['ordering:view'], branchOnly: true },
       },
     ],
+  },
+
+  {
+    path: '/error-403',
+    component: () => import('pages/ErrorForbidden.vue'),
   },
 
   // 4. CATCH ALL (404)

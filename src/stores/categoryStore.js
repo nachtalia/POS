@@ -25,7 +25,21 @@ export const useCategoryStore = defineStore('categoryStore', {
     async fetchCategories() {
       this.loading = true
       try {
-        const querySnapshot = await getDocs(collection(db, 'categories'))
+        const { useAuthStore } = await import('src/features/index')
+        const authStore = useAuthStore()
+        const branchId = authStore.branchId
+        if (authStore.isMainAdmin) {
+          this.categories = []
+          this.loading = false
+          return
+        }
+        if (!branchId) {
+          this.categories = []
+          this.loading = false
+          return
+        }
+        const qRef = query(collection(db, 'categories'), where('branchId', '==', branchId))
+        const querySnapshot = await getDocs(qRef)
         this.categories = querySnapshot.docs.map((doc) => Category.fromFirestore(doc))
       } catch (error) {
         console.error('Error fetching categories:', error)
@@ -39,17 +53,42 @@ export const useCategoryStore = defineStore('categoryStore', {
       this.loading = true
       this.history = [] // Reset history before fetching
       try {
+        const { useAuthStore } = await import('src/features/index')
+        const authStore = useAuthStore()
+        const branchId = authStore.branchId
         // Ensure 'audit_logs' matches the collection name in your database
         const logsRef = collection(db, 'audit_logs')
 
         // Query: Find logs for this entity ID, sorted by newest first
-        const q = query(logsRef, where('entityId', '==', entityId), orderBy('timestamp', 'desc'))
-
-        const snapshot = await getDocs(q)
-        this.history = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }))
+        try {
+          const qRef = query(
+            logsRef,
+            where('branchId', '==', branchId),
+            where('entityId', '==', entityId),
+            orderBy('timestamp', 'desc'),
+          )
+          const snapshot = await getDocs(qRef)
+          this.history = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+        } catch (inner) {
+          const message = String(inner?.message || '')
+          const isIndexError = /requires an index/i.test(message)
+          if (!isIndexError) throw inner
+          const fallbackRef = query(
+            logsRef,
+            where('branchId', '==', branchId),
+            where('entityId', '==', entityId),
+          )
+          const snapshot = await getDocs(fallbackRef)
+          const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+          const toMillis = (ts) =>
+            ts?.toDate
+              ? ts.toDate().getTime()
+              : typeof ts?.seconds === 'number'
+                ? ts.seconds * 1000
+                : 0
+          list.sort((a, b) => toMillis(b.timestamp) - toMillis(a.timestamp))
+          this.history = list
+        }
       } catch (error) {
         console.error('Error fetching category history:', error)
       } finally {
@@ -59,7 +98,12 @@ export const useCategoryStore = defineStore('categoryStore', {
 
     async addCategory(categoryData) {
       try {
-        const newCategory = new Category(categoryData)
+        const { useAuthStore } = await import('src/features/index')
+        const authStore = useAuthStore()
+        const branchId = authStore.branchId
+        const orgOwnerUid = authStore.orgOwnerUid
+        if (authStore.isMainAdmin) throw new Error('Main account cannot add categories')
+        const newCategory = new Category({ ...categoryData, branchId })
 
         const docRef = await addDoc(collection(db, 'categories'), newCategory.toFirestore())
 
@@ -71,6 +115,8 @@ export const useCategoryStore = defineStore('categoryStore', {
           entityType: 'category',
           entityId: docRef.id,
           details: newCategory.toFirestore(),
+          branchId,
+          orgOwnerUid,
         })
       } catch (error) {
         console.error('Error adding category:', error)
@@ -80,6 +126,8 @@ export const useCategoryStore = defineStore('categoryStore', {
 
     async deleteCategory(categoryId) {
       try {
+        const { useAuthStore } = await import('src/features/index')
+        const authStore = useAuthStore()
         await deleteDoc(doc(db, 'categories', categoryId))
         this.categories = this.categories.filter((c) => c.id !== categoryId)
         await logAudit({
@@ -88,6 +136,8 @@ export const useCategoryStore = defineStore('categoryStore', {
           entityType: 'category',
           entityId: categoryId,
           details: null,
+          branchId: authStore.branchId,
+          orgOwnerUid: authStore.orgOwnerUid,
         })
       } catch (error) {
         console.error('Error deleting category:', error)

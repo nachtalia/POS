@@ -3,9 +3,13 @@
     <div class="row q-col-gutter-md">
       <div class="col-12">
         <q-card class="glass-card q-pa-sm" flat bordered>
-          <q-card-section class="row items-center justify-between q-pb-none q-gutter-sm">
-            <div class="text-h6 text-primary text-weight-bold row items-center">
-              <q-icon name="history" class="q-mr-sm" />Audit Trail
+          <q-card-section class="page-header q-pb-none">
+            <div class="page-header-title">
+              <q-icon name="history" color="primary" />
+              <div>
+                <div class="page-title">Audit Trail</div>
+                <div class="page-subtitle">Audit trail history</div>
+              </div>
             </div>
             <q-btn
               color="primary"
@@ -16,6 +20,7 @@
               :dense="$q.screen.lt.sm"
               unelevated
               :rounded="$q.screen.gt.xs"
+              :class="$q.screen.gt.xs ? 'btn-primary' : ''"
               @click="fetchLogs"
               :loading="loading"
             >
@@ -33,6 +38,7 @@
                   placeholder="Search email, type..."
                   bg-color="white"
                   clearable
+                  class="input-field"
                 >
                   <template v-slot:prepend><q-icon name="search" /></template>
                 </q-input>
@@ -48,6 +54,7 @@
                   label="Module"
                   emit-value
                   bg-color="white"
+                  class="input-field"
                 >
                   <template v-slot:prepend v-if="$q.screen.gt.xs">
                     <q-icon name="filter_list" />
@@ -65,6 +72,7 @@
                   label="Action"
                   emit-value
                   bg-color="white"
+                  class="input-field"
                 >
                   <template v-slot:prepend v-if="$q.screen.gt.xs">
                     <q-icon name="filter_alt" />
@@ -350,8 +358,10 @@ import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { db } from 'src/services/firebase'
 import { collection, getDocs, getDoc, doc, query, orderBy, where, limit } from 'firebase/firestore'
+import { useAuthStore } from 'src/features/index.js'
 
 const $q = useQuasar()
+const authStore = useAuthStore()
 
 const loading = ref(false)
 const logs = ref([])
@@ -391,15 +401,57 @@ const pagination = ref({
   rowsPerPage: 10,
 })
 
+const toMillis = (ts) => {
+  if (!ts) return 0
+  if (ts.toDate) return ts.toDate().getTime()
+  if (typeof ts.seconds === 'number') return ts.seconds * 1000
+  const d = new Date(ts)
+  return Number.isNaN(d.getTime()) ? 0 : d.getTime()
+}
+
+// --- Main Fetch ---
 const fetchLogs = async () => {
   loading.value = true
   try {
-    const qRef = query(collection(db, 'audit_logs'), orderBy('timestamp', 'desc'), limit(100))
+    const branchId = authStore.branchId
+    const orgOwnerUid = authStore.orgOwnerUid
+    const qRef = authStore.isMainAdmin
+      ? query(
+          collection(db, 'audit_logs'),
+          where('orgOwnerUid', '==', orgOwnerUid),
+          orderBy('timestamp', 'desc'),
+          limit(100),
+        )
+      : query(
+          collection(db, 'audit_logs'),
+          where('branchId', '==', branchId),
+          orderBy('timestamp', 'desc'),
+          limit(100),
+        )
     const snap = await getDocs(qRef)
     logs.value = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
   } catch (e) {
-    console.error(e)
-    $q.notify({ color: 'negative', message: 'Error loading audit trail' })
+    const message = String(e?.message || '')
+    const isIndexError = /requires an index/i.test(message)
+    if (isIndexError) {
+      try {
+        const branchId = authStore.branchId
+        const orgOwnerUid = authStore.orgOwnerUid
+        const fallbackRef = authStore.isMainAdmin
+          ? query(collection(db, 'audit_logs'), where('orgOwnerUid', '==', orgOwnerUid), limit(100))
+          : query(collection(db, 'audit_logs'), where('branchId', '==', branchId), limit(100))
+        const snap = await getDocs(fallbackRef)
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+        list.sort((a, b) => toMillis(b.timestamp) - toMillis(a.timestamp))
+        logs.value = list
+      } catch (inner) {
+        console.error(inner)
+        $q.notify({ color: 'negative', message: 'Error loading audit trail' })
+      }
+    } else {
+      console.error(e)
+      $q.notify({ color: 'negative', message: 'Error loading audit trail' })
+    }
   } finally {
     loading.value = false
   }
@@ -412,15 +464,51 @@ const fetchEntityHistory = async (entityId) => {
   }
   loadingHistory.value = true
   try {
-    const qRef = query(
-      collection(db, 'audit_logs'),
-      where('entityId', '==', entityId),
-      orderBy('timestamp', 'desc'),
-    )
+    const branchId = authStore.branchId
+    const orgOwnerUid = authStore.orgOwnerUid
+    const qRef = authStore.isMainAdmin
+      ? query(
+          collection(db, 'audit_logs'),
+          where('orgOwnerUid', '==', orgOwnerUid),
+          where('entityId', '==', entityId),
+          orderBy('timestamp', 'desc'),
+        )
+      : query(
+          collection(db, 'audit_logs'),
+          where('branchId', '==', branchId),
+          where('entityId', '==', entityId),
+          orderBy('timestamp', 'desc'),
+        )
     const snap = await getDocs(qRef)
     entityHistory.value = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
   } catch (e) {
-    console.error(e)
+    const message = String(e?.message || '')
+    const isIndexError = /requires an index/i.test(message)
+    if (isIndexError) {
+      try {
+        const branchId = authStore.branchId
+        const orgOwnerUid = authStore.orgOwnerUid
+        const fallbackRef = authStore.isMainAdmin
+          ? query(
+              collection(db, 'audit_logs'),
+              where('orgOwnerUid', '==', orgOwnerUid),
+              where('entityId', '==', entityId),
+            )
+          : query(
+              collection(db, 'audit_logs'),
+              where('branchId', '==', branchId),
+              where('entityId', '==', entityId),
+            )
+        const snap = await getDocs(fallbackRef)
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+        list.sort((a, b) => toMillis(b.timestamp) - toMillis(a.timestamp))
+        entityHistory.value = list
+      } catch (inner) {
+        console.error(inner)
+      }
+    } else {
+      console.error(e)
+    }
   } finally {
     loadingHistory.value = false
   }

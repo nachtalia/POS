@@ -5,6 +5,7 @@ import { db } from 'src/services/firebase'
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null, // Stores { uid, email, role, username }
+    branchId: null, // Stores the branch ID for isolation
     permissions: [], // Stores ['order:create', 'product:read', ...]
   }),
 
@@ -12,7 +13,21 @@ export const useAuthStore = defineStore('auth', {
     // Helper to check if user is superadmin (Case insensitive)
     isSuperAdmin: (state) => {
       const role = state.user?.role?.toLowerCase() || ''
-      return role === 'superadmin' || role === 'admin'
+      return role === 'superadmin'
+    },
+    isAdmin: (state) => {
+      const role = state.user?.role?.toLowerCase() || ''
+      return role === 'admin'
+    },
+    isMainAdmin: (state) => {
+      const role = String(state.user?.role || '').toLowerCase()
+      const isElevated = role === 'admin' || role === 'superadmin'
+      const orgOwnerUid = state.user?.orgOwnerUid
+      const uid = state.user?.uid
+      return isElevated && (!orgOwnerUid || orgOwnerUid === uid)
+    },
+    orgOwnerUid: (state) => {
+      return state.user?.orgOwnerUid || state.user?.uid || null
     },
   },
 
@@ -24,6 +39,20 @@ export const useAuthStore = defineStore('auth', {
       // Superadmin doesn't need to fetch permissions (they have all)
       if (this.isSuperAdmin) {
         this.permissions = ['*']
+        return
+      }
+
+      if (this.isMainAdmin) {
+        this.permissions = [
+          'dashboard:view',
+          'auditTrail:view',
+          'settings:view',
+          'userManagement:view',
+          'userManagement:add',
+          'userManagement:edit',
+          'userManagement:delete',
+          'userManagement:assign',
+        ]
         return
       }
 
@@ -68,6 +97,9 @@ export const useAuthStore = defineStore('auth', {
       this.user = userData
       // Automatically fetch permissions when user is set
       this.fetchPermissions()
+    },
+    setBranchId(id) {
+      this.branchId = id
     },
     setPermissions(perms) {
       this.permissions = Array.isArray(perms) ? perms : []

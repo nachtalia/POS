@@ -1,7 +1,7 @@
 <template>
   <q-layout view="hHh lpR fFf" class="bg-grey-1 font-inter">
     <POSHeader
-      @close="$router.push('/dashboard/orders')"
+      @close="$router.push({ name: 'OrderManagement' })"
       :cart="cart"
       @showCart="showMobileCart = true"
       @printerSetup="setPrinterReady"
@@ -108,6 +108,7 @@ import { useSystemSettingsStore } from 'src/stores/systemSettingsStore'
 
 // Services
 import { logAudit } from 'src/services/auditService'
+import { useAuthStore } from 'src/features/index'
 
 // Components
 import POSHeader from 'src/components/pos/POSHeader.vue'
@@ -120,6 +121,7 @@ const $q = useQuasar()
 useRouter()
 const addonStore = useAddonStore()
 const orderStore = useOrderStore()
+const authStore = useAuthStore()
 const systemSettingsStore = useSystemSettingsStore()
 const { settings } = storeToRefs(systemSettingsStore)
 
@@ -256,6 +258,8 @@ const submitOrder = async (summaryData) => {
       entityType: 'order',
       entityId: finalOrder.id,
       details: { orderNumber: finalOrder.orderNumber, total: finalOrder.totalAmount },
+      branchId: authStore.branchId,
+      orgOwnerUid: authStore.orgOwnerUid,
     })
 
     // Success & Reset
@@ -330,9 +334,15 @@ const handlePrint = async (orderData) => {
 // --- LIFECYCLE ---
 onMounted(() => {
   if (!addonStore.addons.length) addonStore.fetchAddons()
-
+  const branchId = authStore.branchId
+  if (!branchId) {
+    products.value = []
+    loadingProducts.value = false
+    return
+  }
   unsubscribeProducts = onSnapshot(query(collection(db, 'products')), (snap) => {
-    products.value = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+    const all = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+    products.value = all.filter((p) => !p.branchId || p.branchId === branchId)
     loadingProducts.value = false
   })
 })

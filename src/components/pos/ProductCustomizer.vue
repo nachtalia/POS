@@ -179,7 +179,10 @@ const availableAddons = computed(() => {
     const isAvailable = a.status === 'Available'
     const p = props.product
     const explicitlyAllowed = Array.isArray(p.allowedAddons) && p.allowedAddons.includes(a.id)
-    return isAvailable && explicitlyAllowed
+    if (explicitlyAllowed) return isAvailable
+    const allowedByCategory =
+      Array.isArray(p.allowedAddonCategories) && p.allowedAddonCategories.includes(a.category)
+    return isAvailable && allowedByCategory
   })
 })
 

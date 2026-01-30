@@ -8,6 +8,7 @@ export class Addon {
     price = 0,
     stock = null,
     status = 'Available',
+    branchId = null,
     createdAt = null,
     updatedAt = null,
   } = {}) {
@@ -17,6 +18,7 @@ export class Addon {
     this.price = Number(price)
     this.stock = stock === null || stock === undefined ? null : Number(stock)
     this.status = status
+    this.branchId = branchId
     this.createdAt =
       createdAt instanceof Timestamp
         ? createdAt
@@ -38,6 +40,7 @@ export class Addon {
       price: this.price,
       stock: this.stock,
       status: this.status,
+      branchId: this.branchId,
       createdAt: this.createdAt || Timestamp.now(),
       updatedAt: Timestamp.now(),
     }

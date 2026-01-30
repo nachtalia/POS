@@ -3,7 +3,15 @@ import { db, auth } from './firebase' // Adjust path if needed
 import { collection, addDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore'
 
 // --- 1. The Basic Logger (Writes to DB) ---
-export async function logAudit({ module, action, entityType, entityId, details }) {
+export async function logAudit({
+  module,
+  action,
+  entityType,
+  entityId,
+  details,
+  branchId,
+  orgOwnerUid,
+}) {
   const user = auth?.currentUser
 
   // Clean up details to ensure no 'undefined' values (Firebase hates undefined)
@@ -15,6 +23,8 @@ export async function logAudit({ module, action, entityType, entityId, details }
     entityType,
     entityId: entityId || null,
     details: cleanDetails,
+    branchId: branchId || cleanDetails?.branchId || null,
+    orgOwnerUid: orgOwnerUid || cleanDetails?.orgOwnerUid || null,
     userId: user?.uid || null,
     userEmail: user?.email || 'System',
     timestamp: serverTimestamp(),
@@ -58,6 +68,8 @@ export async function logEditAndGetDiff(
   newDataModel,
   moduleName,
   entityType,
+  branchId,
+  orgOwnerUid,
 ) {
   try {
     // A. Fetch the current (old) data from Firebase
@@ -84,6 +96,8 @@ export async function logEditAndGetDiff(
         entityType: entityType,
         entityId: docId,
         details: diff, // This format { old: x, new: y } is what your Modal expects!
+        branchId,
+        orgOwnerUid,
       })
     }
   } catch (error) {

@@ -1,17 +1,17 @@
 <template>
   <q-page class="bg-blue-grey-1 row q-pa-lg">
     <div class="col-12">
-      <div class="col-auto q-mb-md">
-        <div class="row items-center">
-          <q-icon name="style" size="sm" color="primary" class="q-mr-xs" />
-          <div>
-            <div class="text-h5 text-weight-bolder text-blue-grey-10">Store Branding</div>
-            <div class="text-caption text-grey-7">
-              Configure your visual identity and global pricing rules
+      <q-card class="shadow-2 rounded-xl bg-white overflow-hidden q-mb-md">
+        <q-card-section class="page-header" :class="{ 'column q-gutter-y-sm': $q.screen.xs }">
+          <div class="page-header-title">
+            <q-icon name="style" size="sm" color="primary" />
+            <div>
+              <div class="page-title">Store Branding</div>
+              <div class="page-subtitle">Configure visual identity and global pricing rules</div>
             </div>
           </div>
-        </div>
-      </div>
+        </q-card-section>
+      </q-card>
 
       <div class="col-12 row q-col-gutter-sm overflow-hidden">
         <div class="col-12 col-md-5 column">

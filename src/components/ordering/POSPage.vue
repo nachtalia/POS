@@ -49,11 +49,12 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { db } from 'src/services/firebase'
-import { collection, onSnapshot, query, serverTimestamp } from 'firebase/firestore'
+import { collection, onSnapshot, query, serverTimestamp, where } from 'firebase/firestore'
 import { getStorage, ref as storageRef, getDownloadURL } from 'firebase/storage'
 import { useAddonStore } from 'src/stores/addonStore'
 import { useOrderStore } from 'src/stores/orderStore'
 import { logAudit } from 'src/services/auditService'
+import { useAuthStore } from 'src/features/index'
 
 // Import New Components
 import POSHeader from 'src/components/POSHeader.vue'
@@ -65,6 +66,7 @@ import ProductCustomizer from 'src/components/pos/ProductCustomizer.vue'
 const $q = useQuasar()
 const addonStore = useAddonStore()
 const orderStore = useOrderStore()
+const authStore = useAuthStore()
 
 // Props & Emits
 defineProps({ modelValue: Boolean })
@@ -187,6 +189,8 @@ const submitOrder = async (summaryData) => {
       entityType: 'order',
       entityId: finalOrder.id,
       details: { orderNumber: finalOrder.orderNumber, total: finalOrder.totalAmount },
+      branchId: authStore.branchId,
+      orgOwnerUid: authStore.orgOwnerUid,
     })
 
     // Simply clear cart and reset customer, no receipt dialog shown
@@ -201,10 +205,19 @@ const submitOrder = async (summaryData) => {
 // 4. Data Loading
 onMounted(() => {
   if (!addonStore.addons.length) addonStore.fetchAddons()
-  unsubscribeProducts = onSnapshot(query(collection(db, 'products')), (snap) => {
-    products.value = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+  const branchId = authStore.branchId
+  if (!branchId) {
+    products.value = []
     loadingProducts.value = false
-  })
+    return
+  }
+  unsubscribeProducts = onSnapshot(
+    query(collection(db, 'products'), where('branchId', '==', branchId)),
+    (snap) => {
+      products.value = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      loadingProducts.value = false
+    },
+  )
 })
 
 onUnmounted(() => {

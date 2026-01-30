@@ -50,6 +50,17 @@ export default route(function ({ store }) {
     }
     // SCENARIO 3: Accessing Protected Route && Logged In (Check Permissions)
     else if (requiresAuth && isAuthenticated) {
+      const isMainOnly = to.matched.some((record) => record.meta?.mainOnly)
+      const isBranchOnly = to.matched.some((record) => record.meta?.branchOnly)
+      if (isMainOnly && !authStore.isMainAdmin) {
+        next({ path: '/error-403' })
+        return
+      }
+      if (isBranchOnly && authStore.isMainAdmin) {
+        next({ path: '/error-403' })
+        return
+      }
+
       const requiredPermissions = to.meta.permissions
 
       if (requiredPermissions) {
@@ -57,7 +68,7 @@ export default route(function ({ store }) {
 
         // --- THE FIX IS HERE ---
         // We explicitly check the role string (lowercased) to ensure superadmin always passes
-        const isSuperAdminRole = userRole.toLowerCase() === 'superadmin'
+        const isSuperAdminRole = authStore.isSuperAdmin
 
         const hasPermission =
           isSuperAdminRole ||

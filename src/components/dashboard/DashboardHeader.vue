@@ -5,8 +5,8 @@
       :class="{ 'column q-gutter-y-sm text-center': $q.screen.xs }"
     >
       <div>
-        <div class="text-h5 text-weight-bold gradient-text">Coffee Shop Dashboard</div>
-        <div class="text-subtitle2 text-grey-8">
+        <div class="page-title gradient-text">{{ title }}</div>
+        <div class="page-subtitle">
           Good {{ timeGreeting }}, Admin! Here's your business overview
         </div>
       </div>
@@ -46,6 +46,7 @@ const timeGreeting = computed(() => {
   return 'Evening'
 })
 
+defineProps({ title: { type: String, default: 'Dashboard' } })
 defineEmits(['refresh', 'open-export', 'download-inventory', 'logout'])
 </script>
 

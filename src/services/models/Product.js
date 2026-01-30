@@ -9,7 +9,13 @@ export class Product {
     productExpiry = null,
     productCategory = '',
     productImage = '',
+    description = '',
+    sku = '',
+    sizes = [],
+    allowedAddons = [],
+    allowedAddonCategories = [],
     active = true,
+    branchId = null,
     createdAt = null,
     updatedAt = null,
   } = {}) {
@@ -28,7 +34,15 @@ export class Product {
 
     this.productCategory = productCategory
     this.productImage = productImage
+    this.description = description
+    this.sku = sku
+    this.sizes = Array.isArray(sizes) ? sizes : []
+    this.allowedAddons = Array.isArray(allowedAddons) ? allowedAddons : []
+    this.allowedAddonCategories = Array.isArray(allowedAddonCategories)
+      ? allowedAddonCategories
+      : []
     this.active = active
+    this.branchId = branchId
 
     // Handle CreatedAt conversion
     this.createdAt =
@@ -55,7 +69,13 @@ export class Product {
       productExpiry: this.productExpiry,
       productCategory: this.productCategory,
       productImage: this.productImage,
+      description: this.description,
+      sku: this.sku,
+      sizes: this.sizes,
+      allowedAddons: this.allowedAddons,
+      allowedAddonCategories: this.allowedAddonCategories,
       active: this.active,
+      branchId: this.branchId,
       createdAt: this.createdAt || Timestamp.now(),
       updatedAt: Timestamp.now(),
     }

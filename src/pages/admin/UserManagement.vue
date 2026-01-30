@@ -2,42 +2,40 @@
   <q-page class="q-pa-lg q-pa-md-md bg-grey-2">
     <div class="row">
       <div class="col-12">
-        <div class="row items-center justify-between">
-          <div class="col-12 col-sm-auto q-mb-md q-mb-sm-none">
-            <div class="text-h5 text-weight-bold text-blue-grey-9">User Management</div>
-            <div class="text-caption text-grey-7">Manage users, access, and roles</div>
-          </div>
+        <q-card class="shadow-2 rounded-xl bg-white overflow-hidden q-mb-md">
+          <q-card-section class="page-header" :class="{ 'column q-gutter-y-sm': $q.screen.xs }">
+            <div class="page-header-title">
+              <div>
+                <div class="page-title">User Management</div>
+                <div class="page-subtitle">Manage users, access, and roles</div>
+              </div>
+            </div>
 
-          <div class="col-12 col-sm-auto">
-            <div class="row q-col-gutter-sm">
+            <div class="row q-col-gutter-sm" :class="{ 'full-width': $q.screen.xs }">
               <div class="col-12 col-sm-auto" v-if="canManagePermissions">
                 <q-btn
-                  outline
-                  rounded
                   no-caps
-                  color="blue-grey-8"
                   icon="settings"
-                  label="MANAGE ROLES"
+                  label="Manage Roles"
                   @click="showRoleManager = true"
-                  class="full-width"
+                  class="btn-secondary full-width"
                 />
               </div>
 
               <div class="col-12 col-sm-auto" v-if="canAddUser">
                 <q-btn
                   unelevated
-                  rounded
                   no-caps
                   color="primary"
                   icon="add"
-                  label="ADD NEW USER"
+                  label="Add New User"
                   @click="showAddUserPanel = true"
-                  class="full-width"
+                  class="btn-primary full-width"
                 />
               </div>
             </div>
-          </div>
-        </div>
+          </q-card-section>
+        </q-card>
         <AddNewUser v-model="showAddUserPanel" @add="refreshData" />
 
         <q-dialog
@@ -79,11 +77,13 @@
             </q-card-section>
 
             <q-card-actions align="right">
-              <q-btn flat rounded label="Cancel" color="grey" v-close-popup />
+              <q-btn unelevated no-caps label="Cancel" class="btn-secondary" v-close-popup />
               <q-btn
-                rounded
+                unelevated
+                no-caps
                 label="Delete"
                 color="negative"
+                class="btn-danger"
                 @click="deleteUser"
                 :loading="loading"
               />
@@ -131,18 +131,10 @@ const has = (perm) =>
   authStore.permissions.includes('*') ||
   authStore.permissions.includes(perm)
 
-const canAddUser = computed(
-  () => authStore.can('create', 'userManagement') || has('userManagement:create'),
-)
-const canEditUser = computed(
-  () => authStore.can('edit', 'userManagement') || has('userManagement:edit'),
-)
-const canDeleteUser = computed(
-  () => authStore.can('delete', 'userManagement') || has('userManagement:delete'),
-)
-const canManagePermissions = computed(
-  () => authStore.can('assign', 'userManagement') || has('userManagement:assign'),
-)
+const canAddUser = computed(() => has('userManagement:add'))
+const canEditUser = computed(() => has('userManagement:edit'))
+const canDeleteUser = computed(() => has('userManagement:delete'))
+const canManagePermissions = computed(() => has('userManagement:assign'))
 
 // --- Dynamic Roles from Store ---
 const availableRoles = computed(() => {

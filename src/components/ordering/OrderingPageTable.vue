@@ -5,8 +5,8 @@
         <q-card flat bordered class="shadow-1 rounded-borders bg-white">
           <div class="q-pa-md row items-center justify-between q-gutter-y-sm">
             <div class="col-12 col-sm-auto text-center text-sm-left">
-              <div class="text-h6 text-weight-bold text-grey-9">Order Management</div>
-              <div class="text-caption text-grey-6">Realtime Order Tracking</div>
+              <div class="page-title">Order Management</div>
+              <div class="page-subtitle">Realtime order tracking</div>
             </div>
 
             <q-btn
@@ -16,7 +16,7 @@
               label="Open POS"
               unelevated
               no-caps
-              :class="$q.screen.xs ? 'full-width' : 'q-px-md shadow-2'"
+              :class="[$q.screen.xs ? 'full-width' : '', 'btn-primary']"
               @click="goToPOS"
             />
           </div>
@@ -33,6 +33,7 @@
                   bg-color="white"
                   placeholder="Search orders..."
                   clearable
+                  class="input-field"
                 >
                   <template v-slot:prepend>
                     <q-icon name="search" />
@@ -150,44 +151,40 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
-import { db } from 'src/services/firebase'
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from 'src/features/index.js'
+import { useOrderStore } from 'src/stores/orderStore'
 import ReceiptDialog from 'src/components/ordering/ReceiptDialog.vue'
 
 const $q = useQuasar()
 const router = useRouter()
 const authStore = useAuthStore()
+const orderStore = useOrderStore()
 
-const orders = ref([])
-const loading = ref(true)
 const searchQuery = ref('')
 const statusFilter = ref('All')
 const showReceiptDialog = ref(false)
 const selectedOrder = ref(null)
 const statusOptions = ['All', 'Paid', 'Pending', 'Void', 'Cancelled']
-let unsubscribeOrders = null
 
-const canCreateOrder = computed(() => {
-  if (authStore.isSuperAdmin) return true
-  return authStore.can?.('create', 'ordering') || authStore.permissions?.includes('ordering:create')
-})
+const orders = computed(() => orderStore.orders || [])
+const loading = computed(() => orderStore.loading)
+
+// Permissions
+const has = (perm) =>
+  authStore.isSuperAdmin ||
+  authStore.permissions.includes('*') ||
+  authStore.permissions.includes(perm)
+const canCreateOrder = computed(() => has('ordering:view'))
 
 const goToPOS = () => router.push({ name: 'POS' })
 
 onMounted(() => {
-  const ordersQuery = query(collection(db, 'orders'), orderBy('createdAt', 'desc'))
-  unsubscribeOrders = onSnapshot(ordersQuery, (snapshot) => {
-    orders.value = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-    loading.value = false
-  })
-})
-
-onUnmounted(() => {
-  if (unsubscribeOrders) unsubscribeOrders()
+  if (!orderStore.orders.length) {
+    orderStore.fetchOrders()
+  }
 })
 
 const columns = [

@@ -188,6 +188,7 @@
 import { ref, computed, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useUserManagementStore } from 'src/stores/usermanagementStore.js'
+import { useAuthStore } from 'src/features/index.js'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -197,6 +198,7 @@ const emit = defineEmits(['update:modelValue', 'add'])
 
 const $q = useQuasar()
 const userStore = useUserManagementStore()
+const authStore = useAuthStore()
 
 const localDialog = ref(props.modelValue)
 const loading = ref(false)
@@ -211,12 +213,13 @@ const selectedPermissions = ref([])
 
 // --- Dynamic Role Definitions from Store ---
 const userRoles = computed(() => {
-  return userStore.roles.map((role) => ({
+  const base = userStore.roles.map((role) => ({
     label: role.label || role.name,
     value: role.value,
     description: role.description || '',
     permissions: role.permissions || [],
   }))
+  return base
 })
 
 // --- Permissions Definitions (System Constants) ---
@@ -285,11 +288,18 @@ const removePermission = (perm) => {
 }
 
 const isFormValid = computed(() => {
+  const normalizeRole = (r) =>
+    String(r || '')
+      .toLowerCase()
+      .replace(/[\s_-]+/g, '')
+  const selected = normalizeRole(selectedRole.value)
+  const mainOk = !authStore.isMainAdmin || selected === 'superadmin'
   return (
     username.value.length > 0 &&
     /.+@.+\..+/.test(email.value) &&
     password.value.length >= 6 &&
-    selectedPermissions.value.length > 0
+    selectedPermissions.value.length > 0 &&
+    mainOk
   )
 })
 

@@ -1,7 +1,16 @@
 import { boot } from 'quasar/wrappers'
 import { auth, db } from 'src/services/firebase'
 import { onAuthStateChanged } from 'firebase/auth'
-import { doc, getDoc } from 'firebase/firestore'
+import {
+  doc,
+  getDoc,
+  setDoc,
+  collection,
+  query,
+  limit,
+  getDocs,
+  Timestamp,
+} from 'firebase/firestore'
 import { useAuthStore } from 'src/features/index'
 
 export default boot(async ({ store }) => {
@@ -10,34 +19,72 @@ export default boot(async ({ store }) => {
   await new Promise((resolve) => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        authStore.user = user
-
         try {
-          // --- THE FIX IS HERE ---
-          // Changed 'users' to 'user' to match your Firestore screenshot
           const userDocRef = doc(db, 'user', user.uid)
           const userSnap = await getDoc(userDocRef)
 
           if (userSnap.exists()) {
             const userData = userSnap.data()
+            const role = userData.role || 'user'
+            const normalizedRole = String(role).toLowerCase()
+            const hydratedUser = {
+              uid: user.uid,
+              email: user.email,
+              role,
+              username: userData.username || user.displayName || user.email,
+              orgOwnerUid: userData.orgOwnerUid || (normalizedRole === 'admin' ? user.uid : null),
+            }
 
-            // Hydrate store
-            authStore.permissions = userData.permissions || []
-            authStore.role = userData.role || 'user'
+            authStore.setUser(hydratedUser)
 
-            // Optional: Store the DB ID if needed
-            // authStore.dbId = userSnap.id
+            let branchId = userData.branchId
+            if (!branchId && (normalizedRole === 'admin' || normalizedRole === 'superadmin')) {
+              branchId = user.uid
+            }
+            authStore.setBranchId(branchId)
           } else {
-            console.error('User logged in, but no profile found in "user" collection')
-            authStore.permissions = []
+            const existing = await getDocs(query(collection(db, 'user'), limit(1)))
+            if (existing.empty) {
+              const payload = {
+                uid: user.uid,
+                email: user.email,
+                username: user.displayName || user.email,
+                role: 'admin',
+                orgOwnerUid: user.uid,
+                branchId: user.uid,
+                permissions: [],
+                createdAt: Timestamp.now(),
+                updatedAt: Timestamp.now(),
+              }
+              await setDoc(doc(db, 'user', user.uid), payload)
+              authStore.setUser({
+                uid: user.uid,
+                email: user.email,
+                role: 'admin',
+                username: payload.username,
+                orgOwnerUid: user.uid,
+              })
+              authStore.setBranchId(user.uid)
+            } else {
+              authStore.setUser({
+                uid: user.uid,
+                email: user.email,
+                role: 'user',
+                username: user.displayName || user.email,
+                orgOwnerUid: null,
+              })
+              authStore.setPermissions([])
+              authStore.setBranchId(null)
+            }
           }
         } catch (error) {
           console.error('Error fetching permissions:', error)
-          authStore.permissions = []
+          authStore.setPermissions([])
         }
       } else {
-        authStore.user = null
-        authStore.permissions = []
+        authStore.setUser(null)
+        authStore.setPermissions([])
+        authStore.setBranchId(null)
       }
 
       unsubscribe()

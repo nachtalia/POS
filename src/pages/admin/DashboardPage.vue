@@ -3,11 +3,37 @@
     <div class="row" :class="$q.screen.gt.xs ? 'q-col-gutter-md' : 'q-col-gutter-sm'">
       <div class="col-12 q-mt-sm">
         <DashboardHeader
+          :title="brandTitle"
           @refresh="refreshData"
           @logout="handleLogout"
           @open-export="showExportDialog = true"
           @download-inventory="downloadInventoryReport"
         />
+      </div>
+
+      <div class="col-12" v-if="branchOptions.length">
+        <div class="row items-center q-col-gutter-sm">
+          <div class="col-12 col-md-4">
+            <q-select
+              v-model="branchFilter"
+              :options="branchOptions"
+              label="Branch (Super Admin)"
+              outlined
+              dense
+              emit-value
+              map-options
+            />
+          </div>
+          <div class="col-auto" v-if="branchFilter">
+            <q-chip color="primary" text-color="white">Showing: {{ currentBranchLabel }}</q-chip>
+          </div>
+          <div class="col-auto" v-if="branchFilter">
+            <q-btn flat dense label="Clear" @click="branchFilter = null" />
+          </div>
+          <div class="col-auto">
+            <q-btn flat dense label="Sync Branches" @click="syncBranches" />
+          </div>
+        </div>
       </div>
 
       <div class="col-12 q-mt-md q-mb-md">
@@ -70,8 +96,8 @@
         </div>
       </div>
 
-      <div class="col-12 col-md-8 q-mb-md">
-        <SalesChart :orders="orderStore.orders" />
+      <div class="col-12 col-md-8">
+        <SalesChart :orders="filteredOrders" />
       </div>
 
       <div class="col-12 col-md-4">
@@ -91,6 +117,8 @@ import { auth } from 'src/services/firebase'
 import { useOrderStore } from 'src/stores/orderStore'
 import { useProductStore } from 'src/stores/productStore'
 import { useFormatters } from 'src/composables/useFormatters'
+import { useUserManagementStore } from 'src/stores/usermanagementStore'
+import { useAuthStore } from 'src/features/index.js'
 
 // Child Components
 import DashboardHeader from 'src/components/dashboard/DashboardHeader.vue'
@@ -103,7 +131,56 @@ import ExportDialog from 'src/components/dashboard/ExportDialog.vue'
 const router = useRouter()
 const orderStore = useOrderStore()
 const productStore = useProductStore()
+const userStore = useUserManagementStore()
+const authStore = useAuthStore()
 const { formatCurrency } = useFormatters()
+
+// Branch filter (main account only)
+const branchFilter = ref(null)
+const branchOptions = computed(() => {
+  if (!authStore.isMainAdmin) return []
+
+  const users = userStore.users || []
+  const normalizeRole = (role) =>
+    String(role || '')
+      .toLowerCase()
+      .replace(/[\s_]+/g, '')
+  const orgOwnerUid = authStore.orgOwnerUid
+
+  const owners = users.filter((u) => {
+    const uid = u.uid || u.id
+    if (!uid || uid === authStore.user?.uid) return false
+
+    const role = normalizeRole(u.role)
+    if (role !== 'superadmin') return false
+
+    if (u.orgOwnerUid && orgOwnerUid) return u.orgOwnerUid === orgOwnerUid
+    return u.branchId === authStore.user?.uid
+  })
+
+  const map = new Map()
+  owners.forEach((u) => {
+    const uid = u.uid || u.id
+    if (!map.has(uid)) {
+      map.set(uid, { label: u.username || u.email || uid, value: uid })
+    }
+  })
+
+  const list = Array.from(map.values()).sort((a, b) =>
+    String(a.label).localeCompare(String(b.label)),
+  )
+  return [{ label: 'Overall', value: 'ALL' }, ...list]
+})
+const filteredOrders = computed(() => {
+  const all = orderStore.orders || []
+  if (!authStore.isMainAdmin || !branchFilter.value || branchFilter.value === 'ALL') return all
+  return all.filter((o) => o.branchId === branchFilter.value)
+})
+const filteredProducts = computed(() => {
+  const all = productStore.products || []
+  if (!authStore.isMainAdmin || !branchFilter.value || branchFilter.value === 'ALL') return all
+  return all.filter((p) => p.branchId === branchFilter.value)
+})
 
 // --- STATE ---
 const showExportDialog = ref(false)
@@ -120,16 +197,28 @@ const isSameDay = (d1, d2) =>
   d1.getMonth() === d2.getMonth() &&
   d1.getFullYear() === d2.getFullYear()
 
+const normalizeDate = (d) => {
+  if (!d) return null
+  if (typeof d?.toDate === 'function') return d.toDate()
+  const js = new Date(d)
+  return Number.isNaN(js.getTime()) ? null : js
+}
+
 const todayOrders = computed(() => {
   const now = new Date()
-  return orderStore.orders.filter((o) => isSameDay(o.createdAt?.toDate() || new Date(o.date), now))
-    .length
+  return filteredOrders.value.filter((o) => {
+    const od = normalizeDate(o.createdAt || o.date)
+    return od ? isSameDay(od, now) : false
+  }).length
 })
 
 const todaySales = computed(() => {
   const now = new Date()
-  return orderStore.orders
-    .filter((o) => isSameDay(o.createdAt?.toDate() || new Date(o.date), now))
+  return filteredOrders.value
+    .filter((o) => {
+      const od = normalizeDate(o.createdAt || o.date)
+      return od ? isSameDay(od, now) : false
+    })
     .reduce((sum, o) => sum + Number(o.total || o.totalAmount || 0), 0)
 })
 
@@ -139,10 +228,10 @@ const averageOrderValue = computed(() =>
 
 // --- COMPUTED: INVENTORY ---
 const lowStockItems = computed(
-  () => productStore.products.filter((p) => (p.stock ?? 0) <= 5).length,
+  () => filteredProducts.value.filter((p) => (p.stock ?? 0) <= 5).length,
 )
 const criticalStockItems = computed(
-  () => productStore.products.filter((p) => (p.stock ?? 0) <= 2).length,
+  () => filteredProducts.value.filter((p) => (p.stock ?? 0) <= 2).length,
 )
 
 // --- COMPUTED: COMPARISON (Today vs Yesterday) ---
@@ -153,8 +242,11 @@ const salesGrowth = computed(() => {
 
   const todaySum = todaySales.value
 
-  const yesterdaySum = orderStore.orders
-    .filter((o) => isSameDay(o.createdAt?.toDate() || new Date(o.date), yesterday))
+  const yesterdaySum = filteredOrders.value
+    .filter((o) => {
+      const od = normalizeDate(o.createdAt || o.date)
+      return od ? isSameDay(od, yesterday) : false
+    })
     .reduce((sum, o) => sum + Number(o.total || o.totalAmount || 0), 0)
 
   if (yesterdaySum === 0) return 100 // Avoid divide by zero
@@ -165,17 +257,44 @@ const salesGrowth = computed(() => {
 
 // --- COMPUTED: LISTS ---
 const recentOrders = computed(() => {
-  return [...orderStore.orders]
-    .sort(
-      (a, b) =>
-        (b.createdAt?.toDate() || new Date(b.date)) - (a.createdAt?.toDate() || new Date(a.date)),
-    )
+  return [...filteredOrders.value]
+    .sort((a, b) => {
+      const bd = normalizeDate(b.createdAt || b.date)
+      const ad = normalizeDate(a.createdAt || a.date)
+      return (bd?.getTime?.() || 0) - (ad?.getTime?.() || 0)
+    })
     .slice(0, 5)
 })
 
 // --- ACTIONS ---
 const refreshData = async () => {
-  await Promise.all([orderStore.fetchOrders(), productStore.fetchProducts()])
+  await userStore.fetchUsers()
+  if (authStore.isMainAdmin) {
+    const users = userStore.users || []
+    const normalizeRole = (role) =>
+      String(role || '')
+        .toLowerCase()
+        .replace(/[\s_]+/g, '')
+    const orgOwnerUid = authStore.orgOwnerUid
+    const branchIds = users
+      .filter((u) => normalizeRole(u.role) === 'superadmin')
+      .filter((u) =>
+        u.orgOwnerUid ? u.orgOwnerUid === orgOwnerUid : u.branchId === authStore.user?.uid,
+      )
+      .map((u) => u.uid || u.id)
+      .filter(Boolean)
+    await Promise.all([
+      orderStore.fetchOrdersForDashboard(branchIds),
+      productStore.fetchProductsForDashboard(branchIds),
+    ])
+  } else {
+    await Promise.all([orderStore.fetchOrders(), productStore.fetchProducts()])
+  }
+}
+
+const syncBranches = async () => {
+  await userStore.backfillBranchOwnersForMain()
+  await refreshData()
 }
 
 const handleLogout = async () => {
@@ -196,6 +315,17 @@ const executeExportCSV = (options) => {
 const downloadInventoryReport = () => {
   console.log('Downloading inventory report...')
 }
+
+const currentBranchLabel = computed(() => {
+  const opt = branchOptions.value.find((o) => o.value === branchFilter.value)
+  return opt?.label || 'All branches'
+})
+
+const brandTitle = computed(() => {
+  const label = currentBranchLabel.value
+  if (label && label !== 'All branches') return `${label} Dashboard`
+  return 'Dashboard'
+})
 
 // --- LIFECYCLE ---
 onMounted(() => {

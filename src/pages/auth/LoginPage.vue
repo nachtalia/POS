@@ -95,9 +95,18 @@ import { useSystemSettingsStore } from 'src/stores/systemSettingsStore'
 import { useAuthStore } from 'src/features/index'
 
 // 2. Firebase Imports
-// ADDED: signOut to validly kill the session if they have no permission
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth'
-import { collection, getDocs, getDoc, doc, query, where, limit } from 'firebase/firestore'
+import {
+  collection,
+  getDocs,
+  getDoc,
+  doc,
+  query,
+  where,
+  limit,
+  setDoc,
+  Timestamp,
+} from 'firebase/firestore'
 import { auth, db } from 'src/services/firebase'
 
 const router = useRouter()
@@ -189,16 +198,45 @@ const onLoginSubmit = async () => {
       }
     }
 
+    if (!userData) {
+      const existing = await getDocs(query(collection(db, 'user'), limit(1)))
+      if (existing.empty) {
+        const payload = {
+          uid: user.uid,
+          email: user.email,
+          username: user.email,
+          role: 'admin',
+          orgOwnerUid: user.uid,
+          branchId: user.uid,
+          permissions: [],
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
+        }
+        await setDoc(doc(db, 'user', user.uid), payload)
+        userData = payload
+      }
+    }
+
     let userRole = 'staff'
+    let normalizedRole = 'staff'
     let currentUsername = 'User'
     let userPermissions = []
+
+    let orgOwnerUid = null
+    let branchId = null
 
     if (userData) {
       userRole = userData.role || 'staff'
       currentUsername = userData.username || 'User'
+      orgOwnerUid = userData.orgOwnerUid || null
+      branchId = userData.branchId || null
+      normalizedRole = String(userRole || '')
+        .toLowerCase()
+        .replace(/[\s_-]+/g, '')
 
-      if (userRole === 'superadmin' || userRole === 'admin') {
-        userPermissions = ['*'] // Give wildcard
+      // --- PERMISSIONS LOGIC ---
+      if (normalizedRole === 'superadmin') {
+        userPermissions = ['*']
       } else {
         userPermissions = userData.permissions || []
       }
@@ -206,7 +244,7 @@ const onLoginSubmit = async () => {
 
     // --- NEW STEP: Permission Validation ---
     // Check if user is an Admin OR has at least one permission
-    const isAdmin = ['admin', 'superadmin'].includes(userRole)
+    const isAdmin = ['admin', 'superadmin'].includes(normalizedRole)
     const hasAnyPermission = userPermissions && userPermissions.length > 0
 
     if (!isAdmin && !hasAnyPermission) {
@@ -223,8 +261,15 @@ const onLoginSubmit = async () => {
       email: user.email,
       role: userRole,
       username: currentUsername,
+      orgOwnerUid:
+        orgOwnerUid || (['admin', 'superadmin'].includes(normalizedRole) ? user.uid : null),
     })
-    authStore.setPermissions(userPermissions)
+    if (!branchId && ['superadmin', 'admin'].includes(normalizedRole)) {
+      branchId = user.uid
+    }
+    authStore.setBranchId(branchId)
+    await authStore.fetchPermissions()
+    userPermissions = authStore.permissions || []
 
     // 6. Notify
     $q.notify({
@@ -235,7 +280,7 @@ const onLoginSubmit = async () => {
     })
 
     // 7. Redirect
-    if (['admin', 'superadmin'].includes(userRole)) {
+    if (['admin', 'superadmin'].includes(normalizedRole)) {
       router.push({ name: 'Dashboard' })
     } else if (userPermissions.includes('ordering:view')) {
       router.push({ name: 'POS' })
