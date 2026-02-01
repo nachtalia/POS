@@ -30,6 +30,22 @@ const routes = [
           permissions: ['dashboard:view'],
         },
       },
+      // --- NEW: TABLE MANAGEMENT ---
+      {
+        path: '/tables',
+        name: 'TableManagement',
+        component: () => import('pages/admin/TablePage.vue'), // Points to the new file
+        meta: {
+          requiresAuth: true,
+          isSidebarItem: true,
+          label: 'Tables',
+          icon: 'table_restaurant',
+          caption: 'Manage tables & layout',
+          permissions: ['tables:view'], // Ensure you handle this permission in your auth logic
+          branchOnly: true,
+        },
+      },
+      // -----------------------------
       {
         path: '/inventory',
         name: 'Inventory',
@@ -44,24 +60,20 @@ const routes = [
           branchOnly: true,
         },
       },
-
-      // --- MODIFIED: ORDER MANAGEMENT (History List) ---
       {
-        path: '/ordering', // Changed path to be distinct
-        name: 'OrderManagement', // Renamed from 'Ordering'
-        // Points to the file you renamed to OrderManagementPage.vue
+        path: '/ordering',
+        name: 'OrderManagement',
         component: () => import('pages/admin/OrderManagementPage.vue'),
         meta: {
           requiresAuth: true,
           isSidebarItem: true,
           label: 'Order Management',
-          icon: 'list_alt', // Changed icon to represent a list/history
+          icon: 'list_alt',
           caption: 'View and track past orders',
           permissions: ['ordering:view'],
           branchOnly: true,
         },
       },
-
       {
         path: '/transactions',
         name: 'Transactions',
@@ -124,16 +136,14 @@ const routes = [
     ],
   },
 
-  // 3. NEW: POS TERMINAL ROUTE (Full Screen, No Sidebar)
+  // 3. POS TERMINAL ROUTE (Full Screen, No Sidebar)
   {
     path: '/pos',
-    // Uses BlankLayout so the Admin Sidebar/Header does not appear
     component: () => import('layouts/BlankLayout.vue'),
     children: [
       {
         path: '',
-        name: 'POS', // This matches router.push({ name: 'POS' }) or path '/pos'
-        // Points to the NEW wrapper page we created
+        name: 'POS',
         component: () => import('pages/admin/POSTerminalPage.vue'),
         meta: { requiresAuth: true, permissions: ['ordering:view'], branchOnly: true },
       },

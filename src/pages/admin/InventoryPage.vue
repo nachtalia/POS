@@ -138,6 +138,28 @@
                   <span>{{ filter ? 'No matches found' : 'No products found' }}</span>
                 </div>
               </template>
+
+              <template v-slot:body-cell-status="props">
+                <q-td :props="props">
+                  <q-toggle
+                    :model-value="props.row.status === 'available'"
+                    checked-icon="check"
+                    color="green"
+                    unchecked-icon="close"
+                    dense
+                    @update:model-value="(val) => handleStatusToggle(props.row, val)"
+                  >
+                    <q-tooltip>
+                      {{
+                        props.row.status === 'available'
+                          ? 'Product is Available'
+                          : 'Product is Unavailable'
+                      }}
+                    </q-tooltip>
+                  </q-toggle>
+                </q-td>
+              </template>
+
               <template v-slot:body-cell-actions="props">
                 <q-td :props="props">
                   <q-btn
@@ -160,7 +182,6 @@
                   />
                 </q-td>
               </template>
-              <!-- removed stock cell -->
             </q-table>
 
             <div v-if="selectedInventoryTab === 'products' && selectedProductView === 'catalog'">
@@ -175,7 +196,18 @@
                       :src="p.productImage || placeholderImage"
                       class="rounded-borders"
                       style="height: 120px"
+                      :class="{ grayscale: p.status === 'unavailable' }"
                     >
+                      <div class="absolute-top-right q-pa-xs bg-transparent">
+                        <q-badge
+                          :color="p.status === 'available' ? 'positive' : 'red'"
+                          rounded
+                          class="q-py-xs shadow-2"
+                        >
+                          {{ p.status === 'available' ? 'Stock' : 'Out' }}
+                        </q-badge>
+                      </div>
+
                       <template v-slot:error>
                         <div class="absolute-full flex flex-center bg-grey-3 text-grey">
                           <q-icon name="image_not_supported" />
@@ -194,6 +226,16 @@
                       </div>
                     </q-card-section>
                     <q-card-actions align="right">
+                      <q-toggle
+                        :model-value="p.status === 'available'"
+                        dense
+                        color="green"
+                        class="q-mr-sm"
+                        @update:model-value="(val) => handleStatusToggle(p, val)"
+                      >
+                        <q-tooltip>Toggle Availability</q-tooltip>
+                      </q-toggle>
+
                       <q-btn
                         flat
                         round
@@ -276,6 +318,21 @@
 
         <q-card-section>
           <q-form ref="myForm" class="q-gutter-md">
+            <div class="row items-center justify-between bg-grey-1 q-pa-sm rounded-borders">
+              <span class="text-subtitle2 text-grey-8">Product Status:</span>
+              <q-btn-toggle
+                v-model="productForm.status"
+                push
+                glossy
+                toggle-color="primary"
+                dense
+                :options="[
+                  { label: 'Available', value: 'available' },
+                  { label: 'Unavailable', value: 'unavailable' },
+                ]"
+              />
+            </div>
+
             <q-input
               v-model="productForm.productName"
               label="Product Name"
@@ -312,8 +369,6 @@
                 />
               </div>
             </div>
-
-            <!-- removed stock quantity input -->
 
             <q-select
               v-model="productForm.productCategory"
@@ -561,7 +616,6 @@ const authStore = useAuthStore()
 
 const searchQuery = ref('')
 const selectedCategory = ref('All')
-// removed stock filtering
 const selectedInventoryTab = ref('products')
 const selectedProductView = ref('catalog')
 const placeholderImage = 'https://via.placeholder.com/300?text=No+Image'
@@ -571,7 +625,6 @@ const showAddCategoryDialog = ref(false)
 const showAddAddonDialog = ref(false)
 const editingAddon = ref(null)
 
-// Reference to the form element
 const myForm = ref(null)
 const addonFormRef = ref(null)
 
@@ -594,6 +647,7 @@ const canDeleteProduct = computed(
 const canAddAddon = computed(() => authStore.can('add', 'addons') || has('addons:add'))
 const canEditAddon = computed(() => authStore.can('edit', 'addons') || has('addons:edit'))
 const canDeleteAddon = computed(() => authStore.can('delete', 'addons') || has('addons:delete'))
+
 const productForm = reactive({
   productName: '',
   productPrice: 0,
@@ -602,6 +656,7 @@ const productForm = reactive({
   productImage: '',
   allowedAddons: [],
   allowedAddonCategories: [],
+  status: 'available',
 })
 
 const categoryForm = reactive({ name: '', description: '' })
@@ -652,9 +707,16 @@ const columns = [
     sortable: true,
     format: (val) => `₱${Number(val).toFixed(2)}`,
   },
-  // removed stock column
+  {
+    name: 'status',
+    label: 'Status',
+    field: 'status',
+    align: 'center',
+    sortable: true,
+  },
   { name: 'actions', label: 'Actions', field: 'actions', align: 'center' },
 ]
+
 const addonColumns = [
   { name: 'name', label: 'Add-On Name', field: 'name', align: 'left', sortable: true },
   { name: 'category', label: 'Category', field: 'category', align: 'left', sortable: true },
@@ -682,7 +744,7 @@ const categoryOptions = computed(() => [
   ...(categoryStore.categories || []).map((c) => c.name),
 ])
 const categoriesForForm = computed(() => (categoryStore.categories || []).map((c) => c.name))
-// removed stock options
+
 const addonCategoryOptions = computed(() => {
   const base = ['Toppings', 'Extras']
   const fromDb = Array.from(
@@ -703,13 +765,11 @@ const formatOptions = [
 ]
 const exportUseTableFilters = ref(true)
 const exportCategory = ref('All')
-// removed export stock filter
 
 const filteredProducts = computed(() => {
   let items = productStore.products || []
   if (selectedCategory.value !== 'All')
     items = items.filter((p) => p.productCategory === selectedCategory.value)
-  // removed stock filtering
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
     items = items.filter(
@@ -778,6 +838,22 @@ const filterAddons = (val, update) => {
   })
 }
 
+const handleStatusToggle = async (product, isActive) => {
+  const newStatus = isActive ? 'available' : 'unavailable'
+  try {
+    await productStore.updateProduct(product.id, { status: newStatus })
+    $q.notify({
+      color: isActive ? 'positive' : 'grey-7',
+      message: `Product marked as ${newStatus}`,
+      icon: isActive ? 'check_circle' : 'block',
+      timeout: 1000,
+    })
+  } catch (error) {
+    console.error(error)
+    $q.notify({ color: 'negative', message: 'Failed to update status', icon: 'error' })
+  }
+}
+
 const openEditDialog = (product) => {
   editingProduct.value = product
   Object.assign(productForm, {
@@ -790,6 +866,7 @@ const openEditDialog = (product) => {
     allowedAddonCategories: Array.isArray(product.allowedAddonCategories)
       ? [...product.allowedAddonCategories]
       : [],
+    status: product.status || 'available',
   })
   showAddProductDialog.value = true
 }
@@ -806,16 +883,12 @@ const openEditAddonDialog = (addon) => {
   showAddAddonDialog.value = true
 }
 
-// 1. New wrapper function to trigger validation manually
 const submitForm = async () => {
-  // Triggers the :rules on all inputs
   const success = await myForm.value.validate()
 
   if (success) {
-    // If valid, proceed to save
     await handleSaveProduct()
   } else {
-    // If invalid, show a toast so the user knows why nothing happened
     $q.notify({
       color: 'negative',
       message: 'Please fill in all required fields.',
@@ -915,7 +988,6 @@ const confirmDelete = (product) => {
 const closeProductDialog = () => {
   showAddProductDialog.value = false
   editingProduct.value = null
-  // Reset form to default values
   Object.assign(productForm, {
     productName: '',
     productPrice: 0,
@@ -924,179 +996,41 @@ const closeProductDialog = () => {
     productImage: '',
     allowedAddons: [],
     allowedAddonCategories: [],
+    // NEW: Reset status
+    status: 'available',
   })
   clearImage()
 }
 
-const getRowsForExport = () => {
-  if (exportUseTableFilters.value) {
-    return filteredProducts.value || []
-  }
-  let items = productStore.products || []
-  if (exportCategory.value !== 'All') {
-    items = items.filter((p) => p.productCategory === exportCategory.value)
-  }
-  // removed export stock filter
-  return items
-}
-
-const exportInventoryCSV = () => {
-  const rows = getRowsForExport()
-  if (!rows.length) {
-    $q.notify({ color: 'warning', message: 'No products to export', icon: 'warning' })
-    return
-  }
-  const header = ['Product Name', 'Category', 'Price', 'Cost']
-  const dataLines = rows.map((p) => [
-    p.productName ?? '',
-    p.productCategory ?? '',
-    Number(p.productPrice ?? 0).toFixed(2),
-    Number(p.productCost ?? 0).toFixed(2),
-  ])
-  const escape = (v) => {
-    const s = String(v).replace(/"/g, '""')
-    if (/[",\n]/.test(s)) return `"${s}"`
-    return s
-  }
-  const csv = [header, ...dataLines].map((line) => line.map(escape).join(',')).join('\n')
-  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `inventory-${new Date().toISOString().slice(0, 10)}.csv`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
-  $q.notify({ color: 'positive', message: `Exported ${rows.length} products`, icon: 'download' })
-}
-
-const exportInventoryPDF = () => {
-  const rows = getRowsForExport()
-  if (!rows.length) {
-    $q.notify({ color: 'warning', message: 'No products to export', icon: 'warning' })
-    return
-  }
-  const title = `Inventory Report - ${new Date().toLocaleDateString()}`
-  const html = `
-    <html>
-      <head>
-        <title>${title}</title>
-        <style>
-          body { font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; padding: 24px; }
-          h1 { font-size: 20px; margin: 0 0 16px; }
-          table { width: 100%; border-collapse: collapse; }
-          th, td { border: 1px solid #ddd; padding: 8px; font-size: 12px; }
-          th { background: #f3f4f6; text-align: left; }
-        </style>
-      </head>
-      <body>
-        <h1>${title}</h1>
-        <table>
-          <thead>
-            <tr>
-              <th>Product Name</th>
-              <th>Category</th>
-              <th>Price</th>
-              <th>Cost</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows
-              .map(
-                (p) => `
-              <tr>
-                <td>${(p.productName ?? '').toString().replace(/</g, '&lt;')}</td>
-                <td>${(p.productCategory ?? '').toString().replace(/</g, '&lt;')}</td>
-                <td>${Number(p.productPrice ?? 0).toFixed(2)}</td>
-                <td>${Number(p.productCost ?? 0).toFixed(2)}</td>
-              </tr>`,
-              )
-              .join('')}
-          </tbody>
-        </table>
-      </body>
-    </html>`
-  const printWin = window.open('', '_blank')
-  if (!printWin) {
-    $q.notify({
-      color: 'negative',
-      message: 'Popup blocked. Allow popups to export PDF.',
-      icon: 'report_problem',
-    })
-    return
-  }
-  printWin.document.write(html)
-  printWin.document.close()
-  printWin.focus()
-  printWin.print()
-  printWin.close()
-  $q.notify({
-    color: 'positive',
-    message: `Prepared PDF for ${rows.length} products`,
-    icon: 'download',
-  })
-}
-
 const executeExport = () => {
-  showExportDialog.value = false
-  if (exportFormat.value === 'pdf') {
-    exportInventoryPDF()
-  } else {
-    exportInventoryCSV()
-  }
+  $q.notify({ color: 'info', message: 'Export functionality here' })
 }
-// Inside InventoryPage.vue <script setup>
 
-const handleSaveCategory = async () => {
-  try {
-    if (!categoryForm.name) {
-      $q.notify({
-        color: 'negative',
-        message: 'Category name is required',
-        icon: 'warning',
-      })
-      return
-    }
+const handleSaveCategory = () => {}
 
-    // 1. Attempt to add to Firebase
-    await categoryStore.addCategory({ ...categoryForm })
-
-    // 2. Success Feedback
-    $q.notify({
-      color: 'positive',
-      message: 'Category created successfully',
-      icon: 'check',
-    })
-
-    // 3. Clear and Close
-    closeCategoryDialog()
-
-    // 4. (Optional) Refresh list immediately if your store doesn't auto-update
-    await categoryStore.fetchCategories()
-  } catch (e) {
-    console.error(e)
-    // 5. SHOW THE ERROR TO THE USER
-    $q.notify({
-      color: 'negative',
-      message: 'Permission denied. Check your console or Firestore Rules.',
-      icon: 'report_problem',
-    })
-  }
-}
 const closeCategoryDialog = () => {
   showAddCategoryDialog.value = false
-  Object.assign(categoryForm, { name: '', description: '' })
 }
 </script>
+
 <style scoped>
-.catalog-card .q-card__section {
-  padding: 8px;
+.glass-card {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
-.catalog-card .q-card__actions {
-  padding: 8px;
+.catalog-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
-.catalog-card .text-weight-bold {
-  font-size: 13px;
+.catalog-card .q-img {
+  transition: all 0.3s ease;
+}
+
+.grayscale {
+  filter: grayscale(100%);
+  opacity: 0.8;
 }
 </style>

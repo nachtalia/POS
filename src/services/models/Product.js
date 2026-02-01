@@ -15,6 +15,7 @@ export class Product {
     allowedAddons = [],
     allowedAddonCategories = [],
     active = true,
+    status = 'available',
     branchId = null,
     createdAt = null,
     updatedAt = null,
@@ -24,7 +25,6 @@ export class Product {
     this.productPrice = Number(productPrice)
     this.productCost = Number(productCost)
 
-    // Handle Expiry Date conversion safely
     this.productExpiry =
       productExpiry instanceof Timestamp
         ? productExpiry
@@ -42,9 +42,11 @@ export class Product {
       ? allowedAddonCategories
       : []
     this.active = active
+
+    this.status = status || 'available'
+
     this.branchId = branchId
 
-    // Handle CreatedAt conversion
     this.createdAt =
       createdAt instanceof Timestamp
         ? createdAt
@@ -52,7 +54,6 @@ export class Product {
           ? Timestamp.fromDate(new Date(createdAt))
           : null
 
-    // Handle UpdatedAt conversion
     this.updatedAt =
       updatedAt instanceof Timestamp
         ? updatedAt
@@ -75,6 +76,7 @@ export class Product {
       allowedAddons: this.allowedAddons,
       allowedAddonCategories: this.allowedAddonCategories,
       active: this.active,
+      status: this.status,
       branchId: this.branchId,
       createdAt: this.createdAt || Timestamp.now(),
       updatedAt: Timestamp.now(),

@@ -13,7 +13,6 @@ import {
   orderBy,
 } from 'firebase/firestore'
 import { Product } from '../services/models/Product'
-// IMPORT logEditAndGetDiff here
 import { logAudit, logEditAndGetDiff } from '../services/auditService'
 
 export const useProductStore = defineStore('productStore', {
@@ -52,6 +51,7 @@ export const useProductStore = defineStore('productStore', {
         this.loading = false
       }
     },
+
     async fetchProductsForDashboard(branchIds) {
       const { useAuthStore } = await import('src/features/index')
       const authStore = useAuthStore()
@@ -161,12 +161,12 @@ export const useProductStore = defineStore('productStore', {
         const authStore = useAuthStore()
         const branchId = authStore.branchId
         const orgOwnerUid = authStore.orgOwnerUid
+
         const updatePayload = {
           ...partialData,
           updatedAt: Timestamp.now(),
         }
 
-        // --- CHANGED: Calculate Difference Before Update ---
         await logEditAndGetDiff(
           'products',
           productId,
