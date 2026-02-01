@@ -245,17 +245,46 @@
     </q-dialog>
 
     <q-dialog v-model="qrDialog">
-      <q-card style="width: 300px" class="text-center q-pb-md">
+      <q-card style="width: 350px" class="text-center q-pb-md">
         <q-card-section class="row items-center justify-between">
-          <div class="text-h6">Table QR</div>
+          <div class="text-h6">Table QR Code</div>
           <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
         <q-card-section>
           <div class="text-h5 text-weight-bold q-mb-md text-primary">{{ activeQrTable?.name }}</div>
-          <img
-            :src="`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${activeQrTable?.name}`"
-            style="width: 200px"
-          />
+          <div class="bg-white q-pa-sm inline-block rounded-borders">
+            <img :src="qrImageSrc" style="width: 200px; height: 200px" />
+          </div>
+          <div class="text-caption text-grey-6 q-mt-sm break-word">
+            <a
+              :href="qrCodeUrl"
+              target="_blank"
+              class="text-primary"
+              style="text-decoration: underline"
+            >
+              {{ qrCodeUrl }}
+            </a>
+          </div>
+          <div class="q-mt-md row justify-center q-gutter-sm">
+            <q-btn
+              label="Open Page"
+              color="positive"
+              outline
+              size="sm"
+              icon="open_in_new"
+              type="a"
+              :href="qrCodeUrl"
+              target="_blank"
+            />
+            <q-btn
+              label="Download QR"
+              color="primary"
+              outline
+              size="sm"
+              icon="download"
+              @click="downloadQr"
+            />
+          </div>
         </q-card-section>
       </q-card>
     </q-dialog>
@@ -392,6 +421,36 @@ const removeProduct = (index) => {
 const showQrCode = (table) => {
   activeQrTable.value = table
   qrDialog.value = true
+}
+
+const qrCodeUrl = computed(() => {
+  if (!activeQrTable.value) return ''
+  // Use window.location.origin to get current domain
+  // IMPORTANT: Since we are using Hash mode (vueRouterMode: 'hash'), we MUST include the /#/
+  return `${window.location.origin}/#/customer/table/${activeQrTable.value.id}`
+})
+
+const qrImageSrc = computed(() => {
+  if (!qrCodeUrl.value) return ''
+  return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrCodeUrl.value)}`
+})
+
+const downloadQr = async () => {
+  try {
+    const response = await fetch(qrImageSrc.value)
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `QR-${activeQrTable.value.name}.png`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+  } catch (err) {
+    console.error('Download failed', err)
+    $q.notify({ type: 'negative', message: 'Failed to download QR' })
+  }
 }
 
 const saveTable = async () => {

@@ -155,6 +155,21 @@ const routes = [
     component: () => import('pages/ErrorForbidden.vue'),
   },
 
+  // 5. CUSTOMER ROUTES
+  {
+    path: '/customer',
+    component: () => import('layouts/BlankLayout.vue'),
+    meta: { requiresAuth: false },
+    children: [
+      {
+        path: 'table/:tableId',
+        name: 'CustomerTableOrder',
+        component: () => import('pages/customer/TableOrderPage.vue'),
+        meta: { requiresAuth: false },
+      },
+    ],
+  },
+
   // 4. CATCH ALL (404)
   {
     path: '/:catchAll(.*)*',

@@ -13,6 +13,14 @@ const DEFAULT_FALLBACK_ICON = 'icons/favicon-32x32.png'
 
 // 1. Fetch settings when the App mounts (globally)
 onMounted(async () => {
+  // FIX: Redirect legacy/non-hash customer URLs to Hash Mode equivalent
+  // e.g. /customer/table/123 -> /#/customer/table/123
+  if (window.location.pathname.startsWith('/customer')) {
+    const newUrl = window.location.origin + '/#' + window.location.pathname + window.location.search
+    window.location.replace(newUrl)
+    return
+  }
+
   await systemStore.fetchSettings()
 })
 

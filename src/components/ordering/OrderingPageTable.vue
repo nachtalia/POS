@@ -86,6 +86,17 @@
                   {{ formatTotal(props.row) }}
                 </q-td>
                 <q-td key="actions" :props="props">
+                  <q-btn
+                    v-if="props.row.status === 'pending'"
+                    color="positive"
+                    size="sm"
+                    label="Pay"
+                    icon="payments"
+                    class="q-mr-sm"
+                    dense
+                    unelevated
+                    @click.stop="processPayment(props.row)"
+                  />
                   <q-btn flat round dense size="sm" icon="chevron_right" />
                 </q-td>
               </q-tr>
@@ -156,12 +167,14 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from 'src/features/index.js'
 import { useOrderStore } from 'src/stores/orderStore'
+import { useCustomerOrdersStore } from 'src/stores/customerOrdersStore'
 import ReceiptDialog from 'src/components/ordering/ReceiptDialog.vue'
 
 const $q = useQuasar()
 const router = useRouter()
 const authStore = useAuthStore()
 const orderStore = useOrderStore()
+const customerOrdersStore = useCustomerOrdersStore()
 
 const searchQuery = ref('')
 const statusFilter = ref('All')
@@ -223,6 +236,36 @@ const formatTotal = (row) =>
 const openReceipt = (order) => {
   selectedOrder.value = order
   showReceiptDialog.value = true
+}
+
+const processPayment = async (order) => {
+  $q.dialog({
+    title: 'Process Payment',
+    message: `Confirm payment for Order #${order.orderNumber || order.id.substring(0, 8)}?`,
+    cancel: true,
+    persistent: true,
+    ok: {
+      label: 'Pay',
+      color: 'positive',
+      unelevated: true,
+    },
+  }).onOk(async () => {
+    try {
+      $q.loading.show({ message: 'Processing payment...' })
+      await customerOrdersStore.updateOrderStatus(order.id, 'Paid', 'paid')
+      $q.notify({
+        type: 'positive',
+        message: 'Order marked as Paid',
+      })
+    } catch {
+      $q.notify({
+        type: 'negative',
+        message: 'Failed to update order status',
+      })
+    } finally {
+      $q.loading.hide()
+    }
+  })
 }
 </script>
 

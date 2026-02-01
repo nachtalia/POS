@@ -3,6 +3,7 @@ import { db } from 'src/services/firebase'
 import {
   collection,
   getDocs,
+  getDoc,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -32,6 +33,56 @@ export const useTableStore = defineStore('table', {
       await this.fetchTables(id)
 
       this.loading = false
+    },
+
+    async fetchTableById(tableId) {
+      this.loading = true
+      try {
+        const docRef = doc(db, 'tables', tableId)
+        const docSnap = await getDoc(docRef)
+
+        if (docSnap.exists()) {
+          const tableData = Table.fromFirestore(docSnap)
+
+          if (tableData.branchId) {
+            // Fetch fresh products for this branch to ensure we have latest prices/details
+            // and to filter out unavailable items
+            const q = query(
+              collection(db, 'products'),
+              where('branchId', '==', tableData.branchId),
+              where('status', '==', 'available'),
+            )
+            const productsSnap = await getDocs(q)
+            const availableProducts = productsSnap.docs.map((d) => Product.fromFirestore(d))
+            const validProductMap = new Map(availableProducts.map((p) => [p.id, p]))
+
+            if (tableData.products && tableData.products.length > 0) {
+              const hydratedProducts = []
+              tableData.products.forEach((tp) => {
+                // tp.productId is expected based on usage in fetchTables
+                const realProduct = validProductMap.get(tp.productId)
+                if (realProduct) {
+                  // Merge: prefer real product data (latest), but keep table-specifics if any
+                  hydratedProducts.push({
+                    ...tp,
+                    ...realProduct, // Overwrites stale name/price/image from table doc
+                    id: tp.productId, // Ensure ID is consistent
+                  })
+                }
+              })
+              tableData.products = hydratedProducts
+            }
+          }
+
+          return tableData
+        }
+        return null
+      } catch (err) {
+        console.error('Error fetching table by ID:', err)
+        return null
+      } finally {
+        this.loading = false
+      }
     },
 
     async fetchProducts(id) {

@@ -27,6 +27,12 @@ export default route(function ({ store }) {
     // PASS THE STORE INSTANCE HERE
     const authStore = useAuthStore(store)
 
+    // 0. EXPLICITLY ALLOW CUSTOMER ROUTES (Bypass Auth)
+    if (to.path.startsWith('/customer') || to.name === 'CustomerTableOrder') {
+      next()
+      return
+    }
+
     // 1. Check if the route requires authentication
     const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
 
