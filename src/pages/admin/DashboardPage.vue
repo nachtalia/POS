@@ -1,7 +1,7 @@
 <template>
   <q-page :padding="$q.screen.gt.xs" class="bg-app" :class="{ 'q-pa-sm': $q.screen.xs }">
     <div class="row" :class="$q.screen.gt.xs ? 'q-col-gutter-md' : 'q-col-gutter-sm'">
-      <div class="col-12 q-mt-sm">
+      <div class="col-12 q-mb-sm q-mt-sm">
         <DashboardHeader
           :title="brandTitle"
           @refresh="refreshData"
@@ -36,15 +36,9 @@
         </div>
       </div>
 
-      <div class="col-12 q-mt-md q-mb-md">
-        <div
-          class="row"
-          :class="{
-            'no-wrap q-col-gutter-xs': $q.screen.xs,
-            'q-col-gutter-md': $q.screen.gt.xs,
-          }"
-        >
-          <div class="col-3 col-sm-6 col-md-3">
+      <div class="col-12 q-mt-xs q-mb-md">
+        <div class="row q-col-gutter-sm q-col-gutter-md-md">
+          <div class="col-6 col-sm-6 col-md-3">
             <MetricCard
               title="Sales"
               :value="formatCurrency(todaySales)"
@@ -61,7 +55,7 @@
             </MetricCard>
           </div>
 
-          <div class="col-3 col-sm-6 col-md-3">
+          <div class="col-6 col-sm-6 col-md-3">
             <MetricCard
               title="Orders"
               :value="todayOrders"
@@ -72,7 +66,7 @@
             />
           </div>
 
-          <div class="col-3 col-sm-6 col-md-3">
+          <div class="col-6 col-sm-6 col-md-3">
             <MetricCard
               title="Stock"
               :value="lowStockItems"
@@ -83,7 +77,7 @@
             />
           </div>
 
-          <div class="col-3 col-sm-6 col-md-3">
+          <div class="col-6 col-sm-6 col-md-3">
             <MetricCard
               title="Tables"
               :value="activeTables"

@@ -90,7 +90,7 @@
                     v-if="props.row.status === 'pending'"
                     color="positive"
                     size="sm"
-                    label="Pay"
+                    label="Confirm Payment"
                     icon="payments"
                     class="q-mr-sm"
                     dense
