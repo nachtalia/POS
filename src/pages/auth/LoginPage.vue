@@ -181,8 +181,6 @@ const onLoginSubmit = async () => {
     const userCredential = await signInWithEmailAndPassword(auth, loginEmail, password.value)
     const user = userCredential.user
 
-    console.log('Firebase Auth successful. UID:', user.uid)
-
     // 4. Fetch User Role/Profile from Firestore
     let userData = null
     const userDocRef = doc(db, 'user', user.uid)
